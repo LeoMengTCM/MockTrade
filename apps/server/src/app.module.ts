@@ -9,6 +9,9 @@ import { AIModule } from './modules/ai/ai.module';
 import { NewsModule } from './modules/news/news.module';
 import { TradeModule } from './modules/trade/trade.module';
 import { SeasonModule } from './modules/season/season.module';
+import { LeaderboardModule } from './modules/leaderboard/leaderboard.module';
+import { AchievementModule } from './modules/achievement/achievement.module';
+import { SocialModule } from './modules/social/social.module';
 import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
@@ -23,6 +26,9 @@ import { AdminModule } from './modules/admin/admin.module';
     NewsModule,
     TradeModule,
     SeasonModule,
+    LeaderboardModule,
+    AchievementModule,
+    SocialModule,
     AdminModule,
   ],
 })
