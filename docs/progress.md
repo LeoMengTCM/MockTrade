@@ -10,7 +10,7 @@
 | Phase 2: 核心引擎 | ✅ 已完成 | 52 | 2026-03-27 | 2026-03-27 |
 | Phase 3: 交易与赛季 | ✅ 已完成 | 38 | 2026-03-27 | 2026-03-27 |
 | Phase 4: 前端核心页面 | ✅ 已完成 | 30 | 2026-03-27 | 2026-03-27 |
-| Phase 5: 社交/成就/排行 | ⚪ 待开始 | 26 | - | - |
+| Phase 5: 社交/成就/排行 | ✅ 已完成 | 26 | 2026-03-27 | 2026-03-27 |
 | Phase 6: 部署与上线 | ⚪ 待开始 | 20 | - | - |
 
 ---
@@ -154,3 +154,23 @@
 ### 新增文件: 18个 (1112行代码)
 ### 路由: / /login /register /stock/[id] /portfolio /leaderboard /news /news/[id] /profile
 ### 编译验证: ✅ Next.js build 通过 (10 routes)
+
+---
+
+## Phase 5: 社交/成就/排行 (26 点) ✅
+
+### 模块 5.1: 排行榜 (8 点)
+- [x] 5.1.1 排行榜后端 — Redis Sorted Set, assets/return 双排行, 用户信息关联
+- [x] 5.1.2 排行榜API — GET /api/leaderboard/:type, /my-rank
+
+### 模块 5.2: 成就系统 (8 点)
+- [x] 5.2.1 成就定义与检测 — 10种成就, 条件检查, WebSocket解锁通知
+- [x] 5.2.2 成就API — GET /api/achievements, /my, POST /check, /seed (admin)
+
+### 模块 5.3: 社交功能 (10 点)
+- [x] 5.3.1 关注系统 — follow/unfollow, following/followers, stats
+- [x] 5.3.2 交易动态 — 发帖, Feed聚合(关注者+自己), 评论
+- [x] 5.3.3 前端Feed页 — 发帖框, 时间线, 展开评论, 添加评论
+
+### 新增文件: 10个后端 + 1个前端 = 11个 (596行代码)
+### 编译验证: ✅ NestJS build + Next.js build 通过 (11 routes)
