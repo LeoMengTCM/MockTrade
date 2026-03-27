@@ -12,6 +12,7 @@ import { SeasonModule } from './modules/season/season.module';
 import { LeaderboardModule } from './modules/leaderboard/leaderboard.module';
 import { AchievementModule } from './modules/achievement/achievement.module';
 import { SocialModule } from './modules/social/social.module';
+import { HealthModule } from './modules/health/health.module';
 import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
@@ -29,6 +30,7 @@ import { AdminModule } from './modules/admin/admin.module';
     LeaderboardModule,
     AchievementModule,
     SocialModule,
+    HealthModule,
     AdminModule,
   ],
 })
