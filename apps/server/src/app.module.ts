@@ -7,6 +7,8 @@ import { UserModule } from './modules/user/user.module';
 import { MarketModule } from './modules/market/market.module';
 import { AIModule } from './modules/ai/ai.module';
 import { NewsModule } from './modules/news/news.module';
+import { TradeModule } from './modules/trade/trade.module';
+import { SeasonModule } from './modules/season/season.module';
 import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
@@ -19,6 +21,8 @@ import { AdminModule } from './modules/admin/admin.module';
     MarketModule,
     AIModule,
     NewsModule,
+    TradeModule,
+    SeasonModule,
     AdminModule,
   ],
 })
