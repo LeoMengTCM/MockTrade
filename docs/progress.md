@@ -11,7 +11,7 @@
 | Phase 3: 交易与赛季 | ✅ 已完成 | 38 | 2026-03-27 | 2026-03-27 |
 | Phase 4: 前端核心页面 | ✅ 已完成 | 30 | 2026-03-27 | 2026-03-27 |
 | Phase 5: 社交/成就/排行 | ✅ 已完成 | 26 | 2026-03-27 | 2026-03-27 |
-| Phase 6: 部署与上线 | ⚪ 待开始 | 20 | - | - |
+| Phase 6: 部署与上线 | ✅ 已完成 | 20 | 2026-03-27 | 2026-03-27 |
 
 ---
 
@@ -174,3 +174,42 @@
 
 ### 新增文件: 10个后端 + 1个前端 = 11个 (596行代码)
 ### 编译验证: ✅ NestJS build + Next.js build 通过 (11 routes)
+
+---
+
+## Phase 6: 部署与上线 (20 点) ✅
+
+### 模块 6.1: 管理后台前端 (6 点)
+- [x] 6.1.1 Admin页面 — 引擎状态, 市场控制, 新闻控制, 价格冲击, 赛季管理, 成就种子
+
+### 模块 6.2: Docker部署 (8 点)
+- [x] 6.2.1 Dockerfiles — 多阶段构建: web (standalone), server (dist)
+- [x] 6.2.2 docker-compose.yml — 5服务: postgres, redis, server, web, nginx
+- [x] 6.2.3 docker-compose.dev.yml — 开发环境: postgres + redis
+- [x] 6.2.4 Nginx反代 — /api/ → server, /socket.io/ → WebSocket, / → web
+
+### 模块 6.3: 安全与监控 (4 点)
+- [x] 6.3.1 健康检查 — GET /api/health (Redis + DB)
+- [x] 6.3.2 环境变量模板 — env.production.example
+
+### 模块 6.4: 部署脚本 (2 点)
+- [x] 6.4.1 deploy.sh — git pull → build → up → health check
+
+### 新增文件: 12个 (551行代码)
+### 编译验证: ✅ NestJS + Next.js build 通过
+
+---
+
+## 项目完成总结
+
+| 统计项 | 数量 |
+|--------|------|
+| 总文件数 | ~130 |
+| 后端模块 | 16 (NestJS) |
+| 前端路由 | 12 (Next.js) |
+| API端点 | ~45 REST |
+| 数据库Entity | 13 |
+| 虚拟股票 | 25只 |
+| 成就定义 | 10种 |
+| Git提交 | 12 |
+| 任务点完成 | 198/198 (100%) |
