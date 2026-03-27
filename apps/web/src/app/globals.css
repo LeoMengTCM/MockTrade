@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #F8F9FA;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #F1F3F5;
+  --bg-hover: #E9ECEF;
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-muted: #9CA3AF;
+  --border-color: #E5E7EB;
+}
+
+.dark {
+  --bg-primary: #0B0E11;
+  --bg-secondary: #121519;
+  --bg-tertiary: #1A1E24;
+  --bg-hover: #222830;
+  --text-primary: #E5E7EB;
+  --text-secondary: #9CA3AF;
+  --text-muted: #6B7280;
+  --border-color: #1F2937;
+}
+
+body {
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  font-feature-settings: 'rlig' 1, 'calt' 1;
+}
+
+/* Tabular numbers for price displays */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Price flash animations */
+@keyframes flash-up {
+  0% { background-color: rgba(232, 65, 66, 0.3); }
+  100% { background-color: transparent; }
+}
+
+@keyframes flash-down {
+  0% { background-color: rgba(0, 185, 107, 0.3); }
+  100% { background-color: transparent; }
+}
+
+.flash-up {
+  animation: flash-up 0.3s ease-out;
+}
+
+.flash-down {
+  animation: flash-down 0.3s ease-out;
+}
