@@ -1,0 +1,11 @@
+node_modules
+.next
+**/dist
+.git
+.claude
+.env
+.env.local
+*.log
+docs
+coverage
+.DS_Store

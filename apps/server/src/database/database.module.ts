@@ -14,7 +14,7 @@ import { ConfigService } from '@nestjs/config';
         username: config.get('DATABASE_USER', 'postgres'),
         password: config.get('DATABASE_PASSWORD', 'postgres'),
         entities: [__dirname + '/../entities/*.entity{.ts,.js}'],
-        synchronize: process.env.NODE_ENV !== 'production',
+        synchronize: config.get('DB_SYNC', 'true') === 'true',
         logging: process.env.NODE_ENV !== 'production',
       }),
     }),
