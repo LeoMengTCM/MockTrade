@@ -12,8 +12,6 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'drleomeng' || secrets.DOCKERHUB_USERNAME != ''
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,15 +22,19 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract branch or tag name
+      - name: Extract tags
         id: extract_ref
         run: |
+          USER=${{ env.DOCKERHUB_USERNAME }}
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-            echo "IS_TAG=true" >> $GITHUB_OUTPUT
+            VERSION=${GITHUB_REF#refs/tags/}
+            echo "SERVER_TAGS=${USER}/mocktrade-server:${VERSION},${USER}/mocktrade-server:latest" >> $GITHUB_OUTPUT
+            echo "WEB_TAGS=${USER}/mocktrade-web:${VERSION},${USER}/mocktrade-web:latest" >> $GITHUB_OUTPUT
+            echo "NGINX_TAGS=${USER}/mocktrade-nginx:${VERSION},${USER}/mocktrade-nginx:latest" >> $GITHUB_OUTPUT
           else
-            echo "VERSION=latest" >> $GITHUB_OUTPUT
-            echo "IS_TAG=false" >> $GITHUB_OUTPUT
+            echo "SERVER_TAGS=${USER}/mocktrade-server:latest" >> $GITHUB_OUTPUT
+            echo "WEB_TAGS=${USER}/mocktrade-web:latest" >> $GITHUB_OUTPUT
+            echo "NGINX_TAGS=${USER}/mocktrade-nginx:latest" >> $GITHUB_OUTPUT
           fi
 
       - name: Set up Docker Buildx
@@ -44,9 +46,7 @@ jobs:
           context: .
           file: docker/server.Dockerfile
           push: true
-          tags: |-
-            ${{ env.DOCKERHUB_USERNAME }}/mocktrade-server:${{ steps.extract_ref.outputs.VERSION }}
-            ${{ steps.extract_ref.outputs.IS_TAG == 'true' && format('{0}/mocktrade-server:latest', env.DOCKERHUB_USERNAME) || '' }}
+          tags: ${{ steps.extract_ref.outputs.SERVER_TAGS }}
 
       - name: Build and push Web image
         uses: docker/build-push-action@v5
@@ -54,9 +54,7 @@ jobs:
           context: .
           file: docker/web.Dockerfile
           push: true
-          tags: |-
-            ${{ env.DOCKERHUB_USERNAME }}/mocktrade-web:${{ steps.extract_ref.outputs.VERSION }}
-            ${{ steps.extract_ref.outputs.IS_TAG == 'true' && format('{0}/mocktrade-web:latest', env.DOCKERHUB_USERNAME) || '' }}
+          tags: ${{ steps.extract_ref.outputs.WEB_TAGS }}
 
       - name: Build and push Nginx image
         uses: docker/build-push-action@v5
@@ -64,6 +62,4 @@ jobs:
           context: .
           file: docker/nginx.Dockerfile
           push: true
-          tags: |-
-            ${{ env.DOCKERHUB_USERNAME }}/mocktrade-nginx:${{ steps.extract_ref.outputs.VERSION }}
-            ${{ steps.extract_ref.outputs.IS_TAG == 'true' && format('{0}/mocktrade-nginx:latest', env.DOCKERHUB_USERNAME) || '' }}
+          tags: ${{ steps.extract_ref.outputs.NGINX_TAGS }}
