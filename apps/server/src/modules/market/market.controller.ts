@@ -6,12 +6,14 @@ import { MarketStateService } from './market-state.service';
 import { KLineService } from './kline.service';
 import { DisplaySettingsService } from './display-settings.service';
 import { Public } from '../../common/decorators/public.decorator';
+import { MarketRegimeService } from './market-regime.service';
 
 @Controller('market')
 export class MarketController {
   constructor(
     @InjectRepository(StockEntity) private readonly stockRepo: Repository<StockEntity>,
     private readonly marketState: MarketStateService,
+    private readonly marketRegime: MarketRegimeService,
     private readonly klineService: KLineService,
     private readonly displaySettings: DisplaySettingsService,
   ) {}
@@ -19,7 +21,10 @@ export class MarketController {
   @Public()
   @Get('status')
   getStatus() {
-    return this.marketState.getStatusSnapshot();
+    return {
+      ...this.marketState.getStatusSnapshot(),
+      regime: this.marketRegime.getSnapshot(),
+    };
   }
 
   @Public()
@@ -56,7 +61,14 @@ export class MarketController {
 
   @Public()
   @Get('stocks/:id/kline')
-  async getKLine(@Param('id') id: string, @Query('periods') periods?: string, @Query('resolution') resolution?: string) {
-    return this.klineService.getKLines(id, periods ? parseInt(periods) : 100, resolution || '1m');
+  async getKLine(
+    @Param('id') id: string,
+    @Query('periods') periods?: string,
+    @Query('limit') limit?: string,
+    @Query('resolution') resolution?: string,
+  ) {
+    const rawLimit = periods ?? limit;
+    const parsedLimit = rawLimit ? parseInt(rawLimit, 10) : 100;
+    return this.klineService.getKLines(id, Number.isNaN(parsedLimit) ? 100 : parsedLimit, resolution || '1m');
   }
 }

@@ -2,6 +2,7 @@ import { InjectQueue } from '@nestjs/bull';
 import { BadRequestException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bull';
+import { randomUUID } from 'crypto';
 import { MarketStatus } from '@mocktrade/shared';
 import { Repository } from 'typeorm';
 import { NewsEntity } from '../../entities/news.entity';
@@ -16,6 +17,7 @@ import { NEWS_PUBLISH_JOB, NEWS_SCHEDULER_QUEUE } from './news.constants';
 @Injectable()
 export class NewsPublisherService implements OnModuleInit {
   private readonly logger = new Logger(NewsPublisherService.name);
+  private readonly schedulerRunId = randomUUID();
 
   constructor(
     @InjectRepository(NewsEntity) private readonly newsRepo: Repository<NewsEntity>,
@@ -115,7 +117,7 @@ export class NewsPublisherService implements OnModuleInit {
         NEWS_PUBLISH_JOB,
         { cycle, index },
         {
-          jobId: `news-publish:${cycle}:${index}`,
+          jobId: this.buildPublishJobId(cycle, index),
           delay,
           attempts: 2,
           backoff: { type: 'fixed', delay: 3000 },
@@ -129,6 +131,10 @@ export class NewsPublisherService implements OnModuleInit {
     }
 
     this.logger.log(`Scheduled ${index} publish jobs for cycle #${cycle}`);
+  }
+
+  private buildPublishJobId(cycle: number, index: number) {
+    return `news-publish:${this.schedulerRunId}:${cycle}:${index}`;
   }
 
   private async clearScheduledPublishJobs() {

@@ -14,17 +14,31 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const { setStocks, updateStockPrice, setMarketStatus } = useMarketStore();
   const [toastNews, setToastNews] = useState<{ id: string; title: string; sentiment: string } | null>(null);
   const dismissToast = useCallback(() => setToastNews(null), []);
+  const syncMarketSnapshot = useCallback(async () => {
+    try {
+      const res = await api.get('/market/status');
+      setMarketStatus(res.data.status, res.data.countdown || 0, res.data.regime || null);
+    } catch {
+      // Ignore transient network errors and keep the previous snapshot.
+    }
+  }, [setMarketStatus]);
+
+  const refreshStocks = useCallback(async () => {
+    try {
+      const res = await api.get('/market/stocks');
+      setStocks(res.data);
+    } catch {
+      // Ignore transient network errors and keep the previous snapshot.
+    }
+  }, [setStocks]);
 
   useEffect(() => {
     loadFromStorage();
   }, [loadFromStorage]);
 
   useEffect(() => {
-    // Fetch initial stock data
-    api.get('/market/stocks').then(res => setStocks(res.data)).catch(() => {});
-    api.get('/market/status').then(res => {
-      setMarketStatus(res.data.status, res.data.countdown || 0);
-    }).catch(() => {});
+    void refreshStocks();
+    void syncMarketSnapshot();
 
     // Connect WebSocket
     const socket = connectSocket();
@@ -37,7 +51,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     });
     socket.on('market:status', (data: any) => {
       setMarketStatus(data.status, data.countdown);
-      api.get('/market/stocks').then(res => setStocks(res.data)).catch(() => {});
+      void refreshStocks();
+      void syncMarketSnapshot();
     });
     socket.on('news:published', (data: any) => {
       if (data?.id && data?.title) {
@@ -54,7 +69,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       disconnectSocket();
       clearInterval(timer);
     };
-  }, [setStocks, updateStockPrice, setMarketStatus]);
+  }, [refreshStocks, syncMarketSnapshot, updateStockPrice, setMarketStatus]);
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)]">

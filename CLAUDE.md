@@ -121,15 +121,34 @@ MockTrade/
 - nginx 新增 `/uploads/` 代理，Docker Compose 为服务端上传目录增加 `server_uploads` volume；头像文件在重建或重启容器后仍可访问。
 - 本地 Docker 已于 2026-03-29 08:28 CST 重新验证通过：创建新赛季后旧赛季可看到结算记录，测试头像可通过 `http://localhost/uploads/...` 访问，重启 `server` 容器后文件仍保留。
 
+2026-03-29 新增一轮针对个人资料页体验与资料编辑的增强:
+- **个人资料页 Apple 风格重构**：`/profile` 已改造成更完整的资料总览、编辑区、账户表现与赛季历史布局，不再是简单的三块基础卡片。
+- **支持在个人页更换头像**：复用 `ImageUploader` 接入个人页，用户现在可以在个人资料页直接上传新头像并保存。
+- **资料保存后全站同步**：前端 `auth-store` 新增 `updateUser()`，资料更新后 TopBar、排行榜、动态页和评论区都会立即刷新新的头像与昵称。
+- **用户资料接口补强**：`PATCH /api/users/me` 改用 DTO 校验并补上用户名唯一性检查，昵称冲突会返回明确错误。
+- **本地验证通过**：已于 2026-03-29 12:42 CST 执行 `pnpm --filter server build`、`pnpm --filter web exec tsc --noEmit`、`pnpm --filter web build` 与 `docker compose up -d --build web server`；`/api/health` 与 `http://localhost/profile` 均返回正常。
+
 2026-03-29 新增一轮针对核心前端体验的增强:
-- **K线多维度升级**：重构了后端 KLineService，引入基于时段动态聚合真实周期的方法；前端 StockChart 增加 `1分 / 日线 / 周线 / 月线` 快捷切换器，无需刷新即可实时呈现。
+- **K线 / 分时图颗粒度升级**：重构了后端 `KLineService`，新增 `逐跳` 分辨率并把 `1分` 修正为真实分钟聚合；前端 `StockChart` 改成 `逐跳 / 1分 / 5分 / 15分`，分时图与 K 线共用同一套真实数据源，`逐跳` 会显示秒级时间轴。
 - **高定美学重塑 Auth 环节**：登录页（Login）与注册页（Register）完成了全面的大圆角毛玻璃化（backdrop-blur），取消了所有生硬线框，引入拟物风发光阴影与居中弥散极光背景。
 - **股票详情页扁平化排版**：全面去除了晦涩的双屏 Tab 设计，直接把最具特色的公司简介（Persona）高亮置于核心价格看板下；所有关联新闻（事件/回顾）直接流水线全开展现，观感更像股票实盘。
 - **趣味化多层排行榜体系**：原单一排行榜已分为具有强代入感的子榜：🏆 收益战神榜、💰 资本大鳄榜 与 📉 破产惨剧榜；后端增加 `order=asc` 翻转查询法展示垫底选手。
 
-当前仍待完成的主要问题: Bull 队列可观测性补强、AI 上游外部告警 / 熔断策略，以及部分前端体验增强。
+2026-03-29 新增一轮针对行情真实性与趣味性的增强:
+- **市场阶段切换**：新增 `MarketRegimeService`，市场会在 `上行 / 震荡 / 下行` 三种阶段间按多个开盘周期轮换；同一阶段持续越久，偏向会越明显。
+- **板块轮动**：每个阶段会抽取领涨板块和承压板块，同一市场里不再所有股票一起横着抖。
+- **个股画像驱动**：新增 `stock-behavior.ts`，把股票拆成 `steadyCompounder / defensiveGrower / cyclicalMover / highBeta / memeRocket / turnaround` 等画像；稳健股更容易慢慢走趋势，高风险股更容易过山车和跳涨跳水。
+- **趋势记忆引擎**：新增 `trend-engine.ts`，为每只股票维护长期锚点和短波段趋势，让价格可以连续涨一段、跌一段，而不是永远围着一条水平线抖动。
+- **行情合成升级**：`PriceSynthesizer` 现在把市场阶段、板块角色、个股画像、随机波动、均值回归和新闻冲击叠加生成价格。
+- **图表分辨率修正**：`tick` 现在表示每次价格跳动一组，`1分` 改为真实按时间分桶；首页迷你走势图也改成读取逐跳数据，不再误把固定 tick 数量当成“1分”。
+- **可观测性补充**：`GET /api/market/status` 新增 `regime`，`GET /api/admin/engine/status` 新增 `marketRegime`，前后台都能读到当前市场所处阶段。
+- **前端阶段可视化**：首页新增 `MarketRegimePanel`；股票详情页会结合当前股票所属行业显示“领涨 / 承压 / 中性板块”；管理后台总览页也能直接看到当前行情阶段；顶栏状态角标会显示简版阶段标签。
+- **前端 Docker 构建稳定化**：移除 `next/font/google` 的 `Inter` 在线拉取，改成 Apple 风格系统字体栈，避免 `docker compose build web` 因外网字体请求卡住。
+- **本地验证通过**：已于 2026-03-29 12:26 CST 执行 `pnpm --filter server build`、`pnpm --filter web build`、`pnpm --filter web exec tsc --noEmit` 与 `docker compose up -d --build web server`；`/api/health`、`/api/market/status`、`GET /api/market/stocks/:id/kline?resolution=tick`、`GET /api/market/stocks/:id/kline?resolution=1m` 与 `http://localhost` 均返回正常。
 
-2026-03-29 v0.1.0 最终功能补完（所有待办已清零）:
+当前仍待完成的主要问题: 行情参数后台可调、后台观测面板细化、价格行为回归测试，以及部分前端体验增强。
+
+2026-03-29 v0.1.0 功能补完（阶段性里程碑）:
 - Bull 队列可观测性：新建 `news-queue-stats.service.ts`，后端新增 `GET /api/admin/news/queue-stats`，管理后台仪表盘新增 buffer/scheduler 队列监控面板
 - AI 上游熔断：`AIHealthService` 新增 `isCircuitOpen()` 和 `resetHealth()`，`AIService.executeWithRetry` 加入连续失败 ≥5 次短路检查，管理后台新增"手动恢复 AI"按钮
 - 首页新闻跑马灯：新建 `NewsTicker.tsx` CSS 动画无限循环滚动最新新闻
@@ -139,6 +158,11 @@ MockTrade/
 - 管理后台增强：新增 `GET /admin/users`（分页用户列表）和 `GET /admin/stats`（全站统计），前端新增"用户管理"Tab
 - 新建 `README.md`（中文）、`README_EN.md`（英文）、`CHANGELOG.md`
 - 全部 3 个包构建验证通过
+
+2026-03-29 新增一轮针对新闻自动发布停滞的修复:
+- **修复服务重启后新闻自动发布卡死**：`NewsPublisherService` 之前给 Bull 延迟发布任务写死了 `jobId = news-publish:${cycle}:${index}`，而 `MarketStateService` 每次重启后会从 `cycleCount = 0` 重新开始，导致新的任务 ID 与 Redis 中尚未清理的 completed jobs 冲突。
+- **调度任务 ID 已改为带运行实例前缀**：服务启动时会生成一次 `schedulerRunId`，新的任务 ID 形如 `news-publish:${schedulerRunId}:${cycle}:${index}`，避免跨重启重复。
+- **本地验证通过**：已执行 `pnpm --filter server build`、`docker compose up -d --build server`，并确认 Redis 中出现新的 `news-publish:<uuid>:...` delayed jobs，服务日志重新出现自动发布记录，`/api/news/latest` 时间戳持续更新。
 
 详细进度见 `docs/progress.md`。
 
@@ -225,10 +249,20 @@ MockTrade/
 ### 已解决 21: 前端的K线与登录、排行缺乏质感，详情页折叠太深
 **状态**: 已于 2026-03-29 完成。
 **修复方式**:
-- 前后端 K 线图联通增加 `resolution` 控制（支持 1m, 1d, 1w, 1M 动态聚合）。
+- 前后端 K 线图联通增加 `resolution` 控制，现支持 `tick / 1m / 5m / 15m` 动态聚合。
 - 登入、注册接口重铺全息背景玻璃拟物（Apple 审美）。
 - 个股详情移除底部 Tab，强化股票“人设介绍”的存在感。
 - 排行榜横向拆分为收益/资产/破产三榜，大幅度提升玩家竞争乐趣。
+
+### 已解决 22: 当前“1分”K线其实不是逐跳也不是真 1 分钟
+**状态**: 已于 2026-03-29 完成。
+**问题根因**:
+- 原 `KLineService` 按固定 tick 数量切片，把 10 条 tick 硬合成一根，导致前端写着“1分”，实际既不是每次波动一根，也不是每分钟一根。
+- 分时图与 K 线共用同一批伪分钟数据，所以两种视图都会给人“颗粒度不对”的感觉。
+**修复方式**:
+- `apps/server/src/modules/market/kline.service.ts` 新增 `tick` 分辨率，按每次价格变化输出一组 OHLCV；逐跳 K 线的 `open` 取上一跳价格。
+- `1m` 改为真实按时间戳的分钟桶聚合，新增 `5m / 15m` 作为更粗颗粒度选项，并兼容旧别名 `1d / 1w / 1M`。
+- `apps/web/src/components/shared/StockChart.tsx` 改成 `逐跳 / 1分 / 5分 / 15分`，`逐跳` 时打开秒级时间轴；首页 `Sparkline` 同步改成读取逐跳数据。
 
 ### 已解决 8: 涨跌颜色写死，后台无法统一切换
 **状态**: 已于 2026-03-28 完成。
@@ -328,6 +362,25 @@ MockTrade/
 - `docker/nginx/nginx.conf` 新增 `/uploads/` 反向代理到后端。
 - `docker-compose.yml` 为 `/app/apps/server/uploads` 增加 `server_uploads` 持久化卷。
 
+### 已解决 23: 个人资料页过于简陋，且无法在页内更换头像
+**状态**: 已于 2026-03-29 完成。
+**修复方式**:
+- `apps/web/src/app/(main)/profile/page.tsx` 重构为更接近 Apple 风格的资料总览页，整合头像、昵称、账户表现和赛季历史。
+- `apps/web/src/components/shared/ImageUploader.tsx` 现在支持资料页场景，可根据 `defaultImage` 变化回显并在重置资料时恢复显示。
+- `apps/web/src/stores/auth-store.ts` 新增 `updateUser()`，资料保存后可同步刷新本地登录态。
+- `apps/server/src/modules/user/dto/update-me.dto.ts` 新增资料更新 DTO；`UserService.updateMe()` 补上用户名唯一性检查和更明确的错误返回。
+
+### 已解决 24: 服务重启后新闻一直不更新
+**状态**: 已于 2026-03-29 完成。
+**问题根因**:
+- `NewsPublisherService` 原先为 Bull 延迟发布任务使用固定 `jobId`：`news-publish:${cycle}:${index}`。
+- `MarketStateService` 在服务重启后会从 `cycleCount = 0` 重新计数，而 Bull 会保留最近一批 completed jobs。
+- 结果是重启后的新发布任务会与 Redis 中旧任务发生 `jobId` 冲突，看起来像“已调度”，实际没有重新入队，导致新闻页长时间不更新。
+**修复方式**:
+- `NewsPublisherService` 启动时新增进程级 `schedulerRunId`。
+- 自动发布任务 ID 改成 `news-publish:${schedulerRunId}:${cycle}:${index}`，彻底避免跨重启冲突。
+- 已通过本地 Docker 重建、Redis delayed job 检查、服务日志和 `/api/news/latest` 返回结果验证修复生效。
+
 ### 已解决 18: AI 上游偶发 `fetch failed` 时缺少超时 / 重试 / 健康状态
 **状态**: 已于 2026-03-28 完成第一轮稳定性加固。
 **修复方式**:
@@ -342,6 +395,15 @@ MockTrade/
 - 首页、个股页、新闻页、新闻详情、持仓页、排行榜、交易弹窗、图表说明、导航和登录注册页的文案已统一改成“状态 / 动作 / 结果”导向。
 - 去掉“龙头 / 异动 / 事件线索 / 次日复盘 / 做多 / 离谱 / 开启这无聊的一天”等修饰性或内部化表达。
 - `SentimentTag` 去掉表情，事件类新闻统一显示“事件新闻”，回顾类显示“结果回顾”，交易弹窗统一使用“买入 / 卖出 / 预计金额 / 预计股数 / 可用资金 / 可卖股数”。
+
+### 已解决 21: 股票价格整体过于同步，长期像围着一条水平线抖动
+**状态**: 已于 2026-03-29 完成第一轮行情真实性升级。
+**修复方式**:
+- 新增 `MarketRegimeService`，把市场拆成 `bull / neutral / bear` 三种阶段，并按多个开盘周期自动切换。
+- 每个阶段会抽取领涨与承压板块，让不同板块在同一轮行情里出现分化，不再所有股票一起同涨同跌。
+- 新增 `stock-behavior.ts` 与 `trend-engine.ts`，给不同股票分配稳健复利、防御、高贝塔、妖股、反转等画像，并保存趋势记忆。
+- `PriceSynthesizer` 现在会把市场阶段、板块角色、个股画像、随机波动、均值回归和新闻冲击一起纳入价格生成。
+- `GET /api/market/status` 已返回 `regime`，`GET /api/admin/engine/status` 已返回 `marketRegime`，便于后续前台展示和后台观测。
 
 ---
 
@@ -496,15 +558,12 @@ CORS_ORIGIN=http://YOUR_IP          # CORS
 
 ## 10. 下一步待做清单 (优先级排序)
 
-1. **[高] Bull 队列可观测性** — 后台补齐 buffer / scheduler 的 waiting、delayed、completed、failed 统计
-2. **[中] AI 上游外部告警 / 熔断** — 当前已完成 timeout、retry、backoff 与健康状态沉淀，下一步补 provider 级告警和更明确的降级策略
-3. **[中] 新闻滚动条** — 首页顶部 NewsTicker 组件
-4. **[中] 迷你走势图** — 股票列表中的 Sparkline
-5. **[中] 前端实时新闻推送** — WebSocket news 事件 → Toast 通知
-6. **[中] 排行榜实时化** — 交易后更新 Redis Sorted Set → 排行榜刷新
-7. **[低] 管理后台增强** — 股票人设编辑、用户管理、数据统计
-8. **[低] 主题细节打磨** — 深浅主题的对比度、状态色和少量页面细节仍可继续收口
-9. **[低] 响应式优化** — 移动端细节适配
+1. **[高] 行情参数后台可调** — 让管理员可配置 `bull / neutral / bear` 持续周期、强度和个股画像映射，便于调玩法
+2. **[高] 行情观测面板** — 后台补充当前阶段历史、切换日志、各板块表现和涨跌分布，便于调优
+3. **[中] 价格行为回归测试** — 补阶段切换、板块轮动、稳健股与高弹性股差异的集成测试，避免后续调参把行情打回“一起横盘”
+4. **[中] AI 上游 provider 级告警** — 在现有 timeout / retry / circuit breaker 基础上补外部告警与更明确的降级策略
+5. **[低] 主题细节打磨** — 深浅主题的对比度、状态色和少量页面细节继续收口
+6. **[低] 响应式优化** — 移动端细节适配
 
 ---
 

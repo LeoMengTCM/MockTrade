@@ -112,6 +112,7 @@
     /* iOS Safari smooth scrolling and font rendering */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
     font-feature-settings: 'cv11', 'ss01', 'ss03', 'cv02';
   }
 }

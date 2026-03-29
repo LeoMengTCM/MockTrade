@@ -5,7 +5,60 @@
 
 ## 这轮已完成
 
-> 以下为 2026-03-29 完成的最终功能补完（v0.1.0）：
+> 以下为 2026-03-29 完成的新闻自动发布修复：
+
+- **修复服务重启后新闻不再自动更新**：
+  - 根因是 `NewsPublisherService` 先前为 Bull 延迟发布任务使用固定 `jobId`：`news-publish:${cycle}:${index}`。
+  - `MarketStateService` 在服务重启后会从 `cycleCount = 0` 重新计数，而 Bull 的 `removeOnComplete: 50` 会保留最近完成过的一批 job。
+  - 结果是重启后新周期生成的任务 ID 会撞上 Redis 里还没清掉的旧 completed job，日志看起来像“已经调度”，实际并没有重新入队执行。
+  - 现已改为在 `NewsPublisherService` 启动时生成一次 `schedulerRunId`，新的 job ID 形如 `news-publish:${schedulerRunId}:${cycle}:${index}`，从根上避开跨重启冲突。
+  - 已于本地通过 `pnpm --filter server build`、`docker compose up -d --build server`、`curl http://localhost/api/news/latest` 和服务日志验证，新闻会在重启后继续正常发布。
+
+> 以下为 2026-03-29 完成的最新行情真实性升级：
+
+- **市场阶段切换**：
+  - 新建 `MarketRegimeService`，市场会在 `bull / neutral / bear` 三种阶段间按多个开盘周期轮换。
+  - `bull` 时整体涨多跌少，`bear` 时整体跌多涨少，`neutral` 更接近震荡；阶段持续越久，偏向越明显。
+
+- **板块轮动**：
+  - 每个阶段会抽取领涨板块与承压板块，同一市场里不同板块开始出现分化，不再所有股票一起横着抖。
+
+- **个股性格画像**：
+  - 新建 `stock-behavior.ts`，为股票映射 `steadyCompounder / defensiveGrower / cyclicalMover / highBeta / memeRocket / turnaround` 等画像。
+  - 稳健股更容易慢慢走趋势，高弹性股更容易过山车、跳涨和跳水。
+
+- **趋势记忆引擎**：
+  - 新建 `trend-engine.ts`，为每只股票维护长期锚点和短波段趋势，让价格可以连续涨一段、跌一段。
+
+- **价格合成升级**：
+  - `PriceSynthesizer` 现在把市场阶段、板块角色、个股画像、随机波动、均值回归和新闻冲击叠加生成价格。
+
+- **状态接口补强**：
+  - `GET /api/market/status` 现在会返回 `regime`，包含当前阶段、中文标签、剩余周期、强度以及领涨 / 承压板块。
+  - `GET /api/admin/engine/status` 现在会返回 `marketRegime`，便于后台观察当前行情阶段。
+
+- **前端阶段可视化**：
+  - 首页新增 `MarketRegimePanel`，直接展示当前市场阶段、阶段强度、领涨板块和承压板块。
+  - 股票详情页会根据当前股票所属行业标记它是领涨板块、承压板块还是中性板块。
+  - 管理后台总览页新增当前行情阶段面板，顶栏状态角标会显示简版阶段标签。
+
+- **前端 Docker 构建稳定化**：
+  - 移除 `next/font/google` 的 `Inter` 在线拉取，改成 Apple 风格系统字体栈。
+  - 解决此前 `docker compose build web` 偶发卡在 `fonts.gstatic.com` 的问题。
+
+- **K 线 / 分时图颗粒度修正**：
+  - 后端 `KLineService` 新增 `tick` 分辨率，按每次价格跳动输出一组；逐跳 K 线的 `open` 取上一跳价格，这样单跳涨跌能在 K 线上直接看出来。
+  - `1m` 现已改成真实按时间分桶，不再是“固定 10 条 tick 合成一根”的伪分钟线。
+  - 前端 `StockChart` 改为 `逐跳 / 1分 / 5分 / 15分`，分时图与 K 线共用同一套数据，`逐跳` 时会打开秒级时间轴。
+  - 首页 `Sparkline` 也改为读取逐跳数据，迷你走势线会更贴近真实波动节奏。
+
+- **个人资料页重构与头像更换**：
+  - 个人页已重做为更完整的 Apple 风格资料页，拆成资料总览、编辑区、账户表现和赛季历史四个区域。
+  - 用户现在可以在个人页直接更换头像并修改昵称，不再只能在注册时上传头像。
+  - 前端 `auth-store` 新增 `updateUser()`，资料保存后会同步刷新顶部导航、排行榜、动态页和评论区中的头像与昵称。
+  - 后端 `PATCH /api/users/me` 已补上 DTO 校验和用户名唯一性检查，昵称冲突会返回明确错误，不再冒数据库原始异常。
+
+> 以下为 2026-03-29 完成的 v0.1.0 功能补完：
 
 - **Bull 队列可观测性**：
   - 新建 `news-queue-stats.service.ts`，后端新增 `GET /api/admin/news/queue-stats` 返回 buffer/scheduler 两个队列的 waiting/active/delayed/completed/failed 统计。
@@ -48,7 +101,7 @@
   - 彻底抛弃由固定数字 1~8 组成的干瘪头像框。新增了 `<ImageUploader />` 并对接后端上传落库。
   - 对 `/login` 和 `/register` 进行去边框化、加入极致玻璃态及背景光晕重塑。
 - **多维度 K 线图交互 (K-Line Enhancements)**：
-  - 加频 `StockChart` 切片的密集度的同时，给图表上侧加入了强大的多频度聚合筛（1 分钟 / 1 日 / 1 周 / 1 月）。通过后端 `kline.service.ts` 的自动聚类极大强化了操盘视野深度。
+  - 图表现已进一步校正为 `逐跳 / 1分 / 5分 / 15分` 四档，其中 `逐跳` 对应每次价格变化，`1分` 为真实分钟线，不再使用伪日线/周线/月线名称误导玩家。
 - **全新三大排行榜趣味系统**：
   - 从纯单一维度剥离，在 `/leaderboard` 分设“收益战神榜🏆”、“资本大鳄榜💰”和带有反向查询（`order: 'asc'`）支撑下寻找垫底选手的“破产惨剧榜📉”。
 - **股票详情浏览动线改造**：
@@ -122,10 +175,17 @@
   - 新增共享组件 `UserAvatar`，TopBar、个人页、动态页和排行榜都优先显示真实头像。
   - nginx 已代理 `/uploads/` 到后端，`http://localhost/uploads/...` 可直接访问头像。
   - Docker Compose 为服务端上传目录新增 `server_uploads` volume，重建或重启容器后头像文件仍会保留。
+- 个人资料编辑链路已补齐:
+  - `apps/web/src/app/(main)/profile/page.tsx` 现支持头像上传预览、昵称编辑和资料保存。
+  - `apps/web/src/components/shared/ImageUploader.tsx` 支持响应 `defaultImage` 变化，适合用于资料页回显与重置。
+  - `apps/server/src/modules/user/dto/update-me.dto.ts` 负责 `PATCH /api/users/me` 的资料校验。
 - 本地 Docker 已按最新代码重建验证通过:
   - `http://localhost` 正常
   - `http://localhost/api/health` 返回 healthy
   - `http://localhost/api/market/status` 返回市场状态和倒计时
+  - `GET /api/market/stocks/:id/kline?resolution=tick` 返回逐跳数据，时间戳精确到秒级
+  - `GET /api/market/stocks/:id/kline?resolution=1m` 返回真实整分钟时间桶
+  - `http://localhost/profile` 返回 200
   - `GET /api/admin/ai/settings` 返回 `healthy`
   - `POST /api/admin/news/manual` 在 `impactPercent=21` 时可成功入队
   - `/api/admin/news/queue` 会立即看到新的手动事件排在预览首位
@@ -135,6 +195,28 @@
 
 ## 关键文件
 
+- 后端行情真实性
+  - `apps/server/src/modules/market/engine/stock-behavior.ts`
+  - `apps/server/src/modules/market/engine/trend-engine.ts`
+  - `apps/server/src/modules/market/market-regime.service.ts`
+  - `apps/server/src/modules/market/kline.service.ts`
+  - `apps/server/src/modules/market/engine/price-synthesizer.ts`
+  - `apps/server/src/modules/market/engine/tick-scheduler.ts`
+  - `apps/server/src/modules/market/market.controller.ts`
+  - `apps/server/src/modules/admin/admin.controller.ts`
+  - `apps/server/src/modules/market/market.module.ts`
+- 前端行情阶段可视化
+  - `apps/web/src/lib/market-regime.ts`
+  - `apps/web/src/components/shared/MarketRegimePanel.tsx`
+  - `apps/web/src/components/shared/MarketStatusBadge.tsx`
+  - `apps/web/src/stores/market-store.ts`
+  - `apps/web/src/app/(main)/layout.tsx`
+  - `apps/web/src/app/(main)/page.tsx`
+  - `apps/web/src/app/(main)/stock/[id]/page.tsx`
+  - `apps/web/src/app/(main)/admin/page.tsx`
+- 前端构建稳定化
+  - `apps/web/src/app/layout.tsx`
+  - `apps/web/src/app/globals.css`
 - 后端显示设置
   - `apps/server/src/modules/market/display-settings.service.ts`
   - `apps/server/src/modules/market/market.controller.ts`
@@ -179,11 +261,16 @@
   - `apps/server/src/modules/leaderboard/leaderboard.service.ts`
   - `apps/server/src/modules/trade/trade.service.ts`
   - `apps/server/src/modules/trade/limit-order-matcher.service.ts`
+  - `apps/server/src/modules/user/user.controller.ts`
+  - `apps/server/src/modules/user/user.service.ts`
+  - `apps/server/src/modules/user/dto/update-me.dto.ts`
   - `apps/web/src/app/(main)/admin/page.tsx`
   - `apps/web/src/app/(main)/leaderboard/page.tsx`
   - `apps/web/src/app/(main)/profile/page.tsx`
   - `apps/web/src/components/shared/UserAvatar.tsx`
+  - `apps/web/src/components/shared/ImageUploader.tsx`
   - `apps/web/src/lib/asset-url.ts`
+  - `apps/web/src/stores/auth-store.ts`
   - `docker/nginx/nginx.conf`
   - `docker-compose.yml`
 - 市场状态与股票详情
@@ -194,8 +281,13 @@
 
 ## 新增接口
 
+- 公共接口（响应补强）
+  - `GET /api/market/status` — 现返回 `regime`
 - 公共接口
+  - `GET /api/market/stocks/:id/kline` — 现支持 `tick / 1m / 5m / 15m`，兼容旧别名 `1d / 1w / 1M`
   - `GET /api/market/display-settings`
+- 管理后台接口（响应补强）
+  - `GET /api/admin/engine/status` — 现返回 `marketRegime`
 - 管理后台接口
   - `GET /api/admin/ai/settings`
   - `POST /api/admin/ai/settings`
@@ -211,6 +303,17 @@
 
 ## 已完成验证
 
+- `pnpm --filter web exec tsc --noEmit`
+- `pnpm --filter server build`
+- `pnpm --filter web build`
+- `docker compose up -d --build server`
+- `docker compose up -d --build web`
+- `docker compose ps web server` 显示 `mocktrade-web-1` 与 `mocktrade-server-1` 已于 2026-03-29 12:15 CST 重建启动
+- `docker compose ps server` 显示 `mocktrade-server-1` 已于 2026-03-29 12:02 CST 重建启动
+- `curl http://localhost/api/health` 返回 healthy
+- `curl http://localhost/api/market/status` 返回 `regime`
+- `curl http://localhost/api/admin/engine/status` 在管理员 token 下返回 `marketRegime`
+- `curl -I http://localhost` 返回 `HTTP/1.1 200 OK`
 - `pnpm --filter @mocktrade/shared build`
 - `pnpm --filter server build`
 - `pnpm --filter web build`
@@ -236,10 +339,10 @@
 
 ## 建议下一步
 
-1. ~~Bull 队列可观测性~~ ✅ 已完成
-2. ~~AI 上游外部告警 / 熔断~~ ✅ 已完成
-3. 做一轮真实 UI 验收（深浅主题、管理后台、涨跌配色、响应式）
-4. 补充集成测试和端到端测试
+1. 给管理员补可调的阶段参数和个股画像配置，便于调玩法
+2. 补后台更细的行情观测面板，包含阶段切换历史、各板块强弱和涨跌分布
+3. 补行情行为回归测试，覆盖阶段切换、板块轮动、稳健股与高弹性股差异
+4. 做一轮真实 UI 验收（深浅主题、管理后台、涨跌配色、响应式）
 5. 生产环境部署前的安全审查（JWT Secret、CORS、Rate Limiting）
 
 ## 新对话建议 Prompt
@@ -267,9 +370,13 @@
 - 休市不再继续变价，股票详情已显示开休市倒计时
 - K 线已显示历史买卖点，股票详情相关新闻也已恢复
 - 手动事件新闻支持更大输入幅度，且本地 Docker 已验证 `impactPercent=21` 可正常入队并显示在队列预览中
+- 市场价格引擎已升级为“市场阶段 + 板块轮动 + 个股性格 + 趋势记忆 + 新闻冲击”分层模型
+- `GET /api/market/status` 已返回 `regime`，`GET /api/admin/engine/status` 已返回 `marketRegime`
+- 首页、股票详情页、管理后台和顶栏已可直接看到当前市场阶段与板块轮动信息
+- 前端已移除 Google Fonts 外网依赖，`docker compose up -d --build web` 可稳定完成
 
 请先检查当前工作区变更、确认 Docker 运行状态与最近构建结果，然后继续处理剩余高优先级问题。优先关注：
-1. Bull 队列可观测性
-2. AI 上游外部告警 / 熔断
+1. 行情参数后台可调 / 观测能力补强
+2. 行情行为回归测试
 3. 任何我在新对话里继续补充的问题
 ```

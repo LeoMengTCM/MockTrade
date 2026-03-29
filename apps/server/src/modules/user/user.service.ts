@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserEntity } from '../../entities/user.entity';
+import { UpdateMeDto } from './dto/update-me.dto';
 
 @Injectable()
 export class UserService {
@@ -22,9 +23,24 @@ export class UserService {
     return this.sanitize(user);
   }
 
-  async updateMe(userId: string, updates: { username?: string; avatarUrl?: string }) {
-    await this.userRepo.update(userId, updates);
-    return this.getMe(userId);
+  async updateMe(userId: string, updates: UpdateMeDto) {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    if (updates.username && updates.username !== user.username) {
+      const existingUser = await this.userRepo.findOne({ where: { username: updates.username } });
+      if (existingUser && existingUser.id !== userId) {
+        throw new BadRequestException('Username already taken');
+      }
+      user.username = updates.username;
+    }
+
+    if (typeof updates.avatarUrl === 'string') {
+      user.avatarUrl = updates.avatarUrl;
+    }
+
+    await this.userRepo.save(user);
+    return this.sanitize(user);
   }
 
   private sanitize(user: UserEntity) {

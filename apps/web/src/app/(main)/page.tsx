@@ -6,6 +6,7 @@ import { Flame, TrendingDown, TrendingUp, Activity, BarChart2, Layers, ChevronRi
 import { PriceDisplay } from '@/components/shared/PriceDisplay';
 import { NewsTicker } from '@/components/shared/NewsTicker';
 import { Sparkline } from '@/components/shared/Sparkline';
+import { MarketRegimePanel } from '@/components/shared/MarketRegimePanel';
 import { useMarketStore } from '@/stores/market-store';
 import { cn } from '@/lib/cn';
 import { formatVolume } from '@/lib/formatters';
@@ -16,7 +17,7 @@ function getChangePercent(currentPrice: number, openPrice: number) {
 }
 
 export default function HomePage() {
-  const { stocks } = useMarketStore();
+  const { stocks, marketRegime } = useMarketStore();
   const [sparklineData, setSparklineData] = useState<Record<string, number[]>>({});
   const sortedByMove = [...stocks].sort((a, b) => getChangePercent(b.currentPrice, b.openPrice) - getChangePercent(a.currentPrice, a.openPrice));
   const sortedByVolatility = [...stocks].sort(
@@ -37,7 +38,9 @@ export default function HomePage() {
       await Promise.all(
         stocks.slice(0, 25).map(async (stock) => {
           try {
-            const res = await api.get(`/market/stocks/${stock.id}/kline?limit=20`);
+            const res = await api.get(`/market/stocks/${stock.id}/kline`, {
+              params: { periods: 20, resolution: 'tick' },
+            });
             const items = Array.isArray(res.data) ? res.data : [];
             data[stock.id] = items.map((k: any) => Number(k.close));
           } catch { /* ignore */ }
@@ -70,6 +73,10 @@ export default function HomePage() {
           查看 25 只股票的最新价格、涨跌和成交情况。
         </p>
       </div>
+
+      {marketRegime && (
+        <MarketRegimePanel regime={marketRegime} />
+      )}
 
       {/* Hero Stats */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
@@ -140,6 +147,7 @@ export default function HomePage() {
             const change = stock.currentPrice - stock.openPrice;
             const changePercent = getChangePercent(stock.currentPrice, stock.openPrice);
             const isUp = changePercent >= 0;
+            const sparkline = sparklineData[stock.id];
             return (
               <Link
                 key={stock.id}
@@ -154,8 +162,8 @@ export default function HomePage() {
                     </div>
                     <div className="text-sm font-medium text-[var(--text-secondary)]">{stock.name}</div>
                   </div>
-                  {sparklineData[stock.id] && sparklineData[stock.id].length >= 2 && (
-                    <Sparkline prices={sparklineData[stock.id]} width={80} height={28} />
+                  {sparkline && sparkline.length >= 2 && (
+                    <Sparkline prices={sparkline} width={80} height={28} />
                   )}
                 </div>
 

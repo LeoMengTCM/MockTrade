@@ -13,6 +13,8 @@ import { MarketController } from './market.controller';
 import { MarketGateway } from './market.gateway';
 import { DisplaySettingsService } from './display-settings.service';
 import { ManualPriceInterventionService } from './manual-price-intervention.service';
+import { TrendEngine } from './engine/trend-engine';
+import { MarketRegimeService } from './market-regime.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([StockEntity, StockTickEntity])],
@@ -23,12 +25,14 @@ import { ManualPriceInterventionService } from './manual-price-intervention.serv
     RandomWalk,
     MeanReversion,
     EventImpact,
+    TrendEngine,
     TickScheduler,
     KLineService,
     MarketGateway,
     DisplaySettingsService,
     ManualPriceInterventionService,
+    MarketRegimeService,
   ],
-  exports: [MarketStateService, EventImpact, KLineService, MarketGateway, DisplaySettingsService, ManualPriceInterventionService],
+  exports: [MarketStateService, EventImpact, KLineService, MarketGateway, DisplaySettingsService, ManualPriceInterventionService, MarketRegimeService],
 })
 export class MarketModule {}

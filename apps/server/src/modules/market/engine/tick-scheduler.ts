@@ -65,6 +65,7 @@ export class TickScheduler implements OnModuleInit, OnModuleDestroy {
       for (const stock of stocks) {
         const result = this.synthesizer.synthesize({
           stockId: stock.id,
+          symbol: stock.symbol,
           currentPrice: Number(stock.currentPrice),
           basePrice: Number(stock.basePrice),
           openPrice: Number(stock.openPrice),

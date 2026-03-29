@@ -1,6 +1,9 @@
 const ERROR_MESSAGE_MAP: Record<string, string> = {
   'Email already registered': '该邮箱已被注册',
   'Username already taken': '用户名已被占用',
+  'username must be longer than or equal to 2 characters': '用户名至少需要 2 个字符',
+  'username must be shorter than or equal to 20 characters': '用户名最多只能有 20 个字符',
+  'avatarUrl must be shorter than or equal to 255 characters': '头像地址过长，请重新上传头像',
   'Invalid email or password': '邮箱或密码错误',
   'Stock not found': '股票不存在',
   'Stock not found or inactive': '股票不存在或已停用',

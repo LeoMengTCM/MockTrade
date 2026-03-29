@@ -2,6 +2,7 @@ import { Controller, Get, Patch, Param, Body, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { UserService } from './user.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { UpdateMeDto } from './dto/update-me.dto';
 
 @Controller('users')
 @UseGuards(AuthGuard('jwt'))
@@ -16,7 +17,7 @@ export class UserController {
   @Patch('me')
   updateMe(
     @CurrentUser('id') userId: string,
-    @Body() body: { username?: string; avatarUrl?: string },
+    @Body() body: UpdateMeDto,
   ) {
     return this.userService.updateMe(userId, body);
   }

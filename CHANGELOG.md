@@ -79,3 +79,4 @@ All notable changes to this project are documented in this file.
 - Fixed AI JSON parsing for edge-case outputs with repair pipeline
 - Fixed WebSocket reconnection handling
 - Fixed price color mode persistence across themes
+- Fixed automatic news publishing getting stuck after server restart because Bull scheduler job IDs collided with retained completed jobs

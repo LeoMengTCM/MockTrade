@@ -1,14 +1,16 @@
 import { create } from 'zustand';
 import type { Stock } from '@mocktrade/shared';
 import { MarketStatus } from '@mocktrade/shared';
+import type { MarketRegimeSnapshot } from '@/lib/market-regime';
 
 interface MarketState {
   stocks: Stock[];
   marketStatus: MarketStatus;
   countdown: number;
+  marketRegime: MarketRegimeSnapshot | null;
   setStocks: (stocks: Stock[]) => void;
   updateStockPrice: (stockId: string, price: number, volume: number) => void;
-  setMarketStatus: (status: MarketStatus, countdown: number) => void;
+  setMarketStatus: (status: MarketStatus, countdown: number, regime?: MarketRegimeSnapshot | null) => void;
   decrementCountdown: () => void;
 }
 
@@ -16,6 +18,7 @@ export const useMarketStore = create<MarketState>((set) => ({
   stocks: [],
   marketStatus: MarketStatus.CLOSED,
   countdown: 0,
+  marketRegime: null,
 
   setStocks: (stocks) => set({ stocks }),
 
@@ -34,7 +37,12 @@ export const useMarketStore = create<MarketState>((set) => ({
       ),
     })),
 
-  setMarketStatus: (status, countdown) => set({ marketStatus: status, countdown }),
+  setMarketStatus: (status, countdown, regime) =>
+    set((state) => ({
+      marketStatus: status,
+      countdown,
+      marketRegime: regime === undefined ? state.marketRegime : regime,
+    })),
 
   decrementCountdown: () =>
     set((state) => ({

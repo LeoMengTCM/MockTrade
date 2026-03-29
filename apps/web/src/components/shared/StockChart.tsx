@@ -9,6 +9,32 @@ import { formatCurrency } from '@/lib/formatters';
 import { getPricePalette, PRICE_COLOR_MODE_EVENT } from '@/lib/market-display';
 
 type ChartMode = 'line' | 'candlestick';
+type ChartResolution = 'tick' | '1m' | '5m' | '15m';
+
+const RESOLUTION_OPTIONS: Array<{
+  value: ChartResolution;
+  label: string;
+  description: string;
+}> = [
+  { value: 'tick', label: '逐跳', description: '每次价格变动一组' },
+  { value: '1m', label: '1分', description: '按 1 分钟聚合' },
+  { value: '5m', label: '5分', description: '按 5 分钟聚合' },
+  { value: '15m', label: '15分', description: '按 15 分钟聚合' },
+];
+
+const RESOLUTION_LIMIT_MAP: Record<ChartResolution, number> = {
+  tick: 240,
+  '1m': 240,
+  '5m': 120,
+  '15m': 90,
+};
+
+const RESOLUTION_DESCRIPTION_MAP: Record<ChartResolution, string> = {
+  tick: '逐跳展示',
+  '1m': '1 分钟',
+  '5m': '5 分钟',
+  '15m': '15 分钟',
+};
 
 export interface StockTradeMarker {
   id: string;
@@ -86,7 +112,7 @@ export function StockChart({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [bars, setBars] = useState<KLineData[]>([]);
   const [mode, setMode] = useState<ChartMode>('line');
-  const [resolution, setResolution] = useState<'1m' | '1d' | '1w' | '1M'>('1m');
+  const [resolution, setResolution] = useState<ChartResolution>('tick');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [paletteVersion, setPaletteVersion] = useState(0);
@@ -102,8 +128,7 @@ export function StockChart({
 
     const fetchBars = async () => {
       try {
-        const limitMap = { '1m': 360, '1d': 100, '1w': 50, '1M': 60 };
-        const periods = limitMap[resolution];
+        const periods = RESOLUTION_LIMIT_MAP[resolution];
         const res = await api.get(`/market/stocks/${stockId}/kline`, { params: { periods, resolution } });
         if (!active) return;
         setBars(Array.isArray(res.data) ? res.data : []);
@@ -164,8 +189,8 @@ export function StockChart({
         timeScale: {
           borderColor: 'rgba(71, 85, 105, 0.28)',
           timeVisible: true,
-          secondsVisible: false,
-          barSpacing: mode === 'line' ? 10 : 8,
+          secondsVisible: resolution === 'tick',
+          barSpacing: resolution === 'tick' ? (mode === 'line' ? 8 : 6) : mode === 'line' ? 10 : 8,
           rightOffset: 2,
         },
         crosshair: {
@@ -286,7 +311,7 @@ export function StockChart({
       cancelled = true;
       cleanup?.();
     };
-  }, [bars, mode, paletteVersion, tradeMarkers]);
+  }, [bars, mode, paletteVersion, resolution, tradeMarkers]);
 
   const latestBar = bars[bars.length - 1];
   const intradayAmplitude = latestBar
@@ -300,19 +325,15 @@ export function StockChart({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="font-semibold">价格走势</h3>
-          <p className="text-sm text-[var(--text-muted)]">支持多种时间周期切换，实时更新数据。</p>
+          <p className="text-sm text-[var(--text-muted)]">分时图和 K 线现在共用同一套真实分辨率，支持逐跳查看每次价格变化。</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <div className="flex gap-1 bg-[var(--bg-primary)] p-0.5 rounded-full border border-[var(--border-color)]">
-            {([
-              ['1m', '1分'],
-              ['1d', '日线'],
-              ['1w', '周线'],
-              ['1M', '月线'],
-            ] as const).map(([value, label]) => (
+            {RESOLUTION_OPTIONS.map(({ value, label, description }) => (
               <button
                 key={value}
-                onClick={() => setResolution(value as any)}
+                onClick={() => setResolution(value)}
+                title={description}
                 className={cn(
                   'rounded-full px-3 py-1.5 text-xs transition-colors',
                   resolution === value
@@ -408,7 +429,10 @@ export function StockChart({
       </div>
 
       {!loading && !error && bars.length > 0 && (
-        <p className="mt-3 text-xs text-[var(--text-muted)]">当前展示最近 {bars.length} 组行情，按 {resolution === '1m' ? '1分钟' : resolution === '1d' ? '1日' : resolution === '1w' ? '1周' : '1月'} 聚合。分时图更适合看实时变化，K 线更适合看整体波动，箭头表示你的成交位置。</p>
+        <p className="mt-3 text-xs text-[var(--text-muted)]">
+          当前展示最近 {bars.length} 组行情，按 {RESOLUTION_DESCRIPTION_MAP[resolution]} 组织。
+          分时图会直接看收盘轨迹，K 线会看每组区间的开高低收；箭头表示你的成交位置。
+        </p>
       )}
     </div>
   );

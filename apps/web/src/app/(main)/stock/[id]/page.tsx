@@ -7,6 +7,7 @@ import { translateApiErrorMessage } from '@/lib/api-error';
 import { useMarketStore } from '@/stores/market-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { StockChart, type StockTradeMarker } from '@/components/shared/StockChart';
+import { MarketRegimePanel } from '@/components/shared/MarketRegimePanel';
 import { formatCountdown, formatCurrency, formatPercent, formatVolume, timeAgo } from '@/lib/formatters';
 import { SentimentTag } from '@/components/shared/SentimentTag';
 import { cn } from '@/lib/cn';
@@ -38,7 +39,7 @@ interface FilledOrderItem {
 export default function StockDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { stocks, marketStatus, countdown } = useMarketStore();
+  const { stocks, marketStatus, countdown, marketRegime } = useMarketStore();
   const { isAuthenticated } = useAuthStore();
   const [stock, setStock] = useState<StockDetail | null>(null);
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -155,6 +156,15 @@ export default function StockDetailPage() {
           <p className="mt-1 text-sm text-[var(--text-secondary)]">{marketCountdownLabel}</p>
         )}
       </div>
+
+      {marketRegime && (
+        <MarketRegimePanel
+          regime={marketRegime}
+          focusSector={stock?.sector || liveStock?.sector}
+          compact
+          title="当前行情环境"
+        />
+      )}
 
       {/* Persona / Company Info */}
       <div className="rounded-xl border border-[var(--border-color)] bg-accent-primary/5 p-4 text-sm text-[var(--text-secondary)] shadow-soft">

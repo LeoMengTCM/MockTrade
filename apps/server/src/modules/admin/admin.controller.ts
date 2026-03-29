@@ -17,6 +17,7 @@ import { NewsPublisherService } from '../news/news-publisher.service';
 import { MarketGateway } from '../market/market.gateway';
 import { DisplaySettingsService } from '../market/display-settings.service';
 import { ManualPriceInterventionService } from '../market/manual-price-intervention.service';
+import { MarketRegimeService } from '../market/market-regime.service';
 import { GenerateManualNewsDto } from './dto/generate-manual-news.dto';
 import { UpdateAISettingsDto } from './dto/update-ai-settings.dto';
 import { UpdateDisplaySettingsDto } from './dto/update-display-settings.dto';
@@ -39,6 +40,7 @@ export class AdminController {
     private readonly gateway: MarketGateway,
     private readonly displaySettings: DisplaySettingsService,
     private readonly manualPriceIntervention: ManualPriceInterventionService,
+    private readonly marketRegime: MarketRegimeService,
     private readonly newsQueueStats: NewsQueueStatsService,
   ) { }
 
@@ -48,6 +50,7 @@ export class AdminController {
 
     return {
       marketStatus: this.marketState.getStatus(),
+      marketRegime: this.marketRegime.getSnapshot(),
       cycleCount: this.marketState.getCycleCount(),
       activeImpacts: this.eventImpact.getActiveCount(),
       connectedClients: this.gateway.getConnectedCount(),

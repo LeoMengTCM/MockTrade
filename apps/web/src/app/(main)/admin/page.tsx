@@ -7,9 +7,11 @@ import { api } from '@/lib/api';
 import { translateApiErrorMessage } from '@/lib/api-error';
 import { formatDateRange } from '@/lib/formatters';
 import { applyPriceColorMode } from '@/lib/market-display';
+import type { MarketRegimeSnapshot } from '@/lib/market-regime';
 import { useAuthStore } from '@/stores/auth-store';
 import { useMarketStore } from '@/stores/market-store';
 import { cn } from '@/lib/cn';
+import { MarketRegimePanel } from '@/components/shared/MarketRegimePanel';
 import {
   Settings, Play, Pause, Zap, Newspaper, Trophy, Award,
   RefreshCw, LayoutDashboard, Cpu, Radio, LayoutTemplate,
@@ -19,6 +21,7 @@ import {
 // === Type Definitions (Same as original) === //
 interface EngineStatus {
   marketStatus: string;
+  marketRegime: MarketRegimeSnapshot;
   cycleCount: number;
   activeImpacts: number;
   connectedClients: number;
@@ -323,7 +326,7 @@ export default function AdminPage() {
           {/* === OVERVIEW TAB === */}
           {activeTab === 'overview' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <Header title="系统总览" desc="查看市场状态、连接数、待发布队列和 AI 健康情况" />
+              <Header title="系统总览" desc="查看市场状态、行情阶段、连接数、待发布队列和 AI 健康情况" />
               {status ? (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <SystemCard label="市场状态" value={getMarketStatusLabel(status.marketStatus)} highlight={status.marketStatus === 'opening'} />
@@ -332,6 +335,10 @@ export default function AdminPage() {
                   <SystemCard label="在线连接" value={status.connectedClients.toString()} />
                 </div>
               ) : <div className="h-24 rounded-2xl bg-[var(--bg-secondary)] animate-pulse" />}
+
+              {status?.marketRegime ? (
+                <MarketRegimePanel regime={status.marketRegime} compact title="当前行情阶段" />
+              ) : null}
 
               {adminStats && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

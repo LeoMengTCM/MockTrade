@@ -5,7 +5,7 @@ import { cn } from '@/lib/cn';
 import { formatCountdown } from '@/lib/formatters';
 
 export function MarketStatusBadge() {
-  const { marketStatus, countdown } = useMarketStore();
+  const { marketStatus, countdown, marketRegime } = useMarketStore();
   const isOpen = marketStatus === 'opening';
   const isSettling = marketStatus === 'settling';
 
@@ -36,6 +36,20 @@ export function MarketStatusBadge() {
       {countdownLabel && (
         <span className="text-xs text-[var(--text-muted)]">
           {countdownLabel}
+        </span>
+      )}
+      {marketRegime && (
+        <span
+          className={cn(
+            'hidden xl:inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
+            marketRegime.regime === 'bull'
+              ? 'bg-up/10 text-up'
+              : marketRegime.regime === 'bear'
+                ? 'bg-down/10 text-down'
+                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+          )}
+        >
+          {marketRegime.label}
         </span>
       )}
     </div>
