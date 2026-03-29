@@ -8,4 +8,5 @@ node_modules
 *.log
 docs
 coverage
+.tmp
 .DS_Store

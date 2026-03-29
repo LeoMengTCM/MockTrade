@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.1.1] - 2026-03-29
+
+### Deployment
+- Added `docker-compose.dockerhub.yml` for pull-based VPS deployment without local source builds
+- Added `docker/nginx.Dockerfile` so nginx can be shipped as a prebuilt image instead of relying on a bind-mounted config
+- Published Docker Hub distribution flow in both Chinese and English READMEs
+- Added per-image overrides plus documented Docker registry mirrors for China-based VPS deployments
+- Added `NODE_IMAGE`, `NGINX_IMAGE`, and `PNPM_REGISTRY` support so source builds can also use domestic mirrors
+- Slimmed the backend runtime image by deploying production-only dependencies instead of copying the full workspace `node_modules`
+
+### Frontend
+- Default frontend API, WebSocket, and asset URLs now fall back to same-origin when `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` are unset
+- Fixed `docker/web.Dockerfile` to actually forward `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` build args into the Next.js build
+
 ## [0.1.0] - 2026-03-29
 
 ### 🎉 Initial Release

@@ -1,9 +1,20 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+function getApiBaseUrl() {
+  const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (configured) {
+    return configured.replace(/\/$/, '');
+  }
+
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+
+  return 'http://localhost:3001';
+}
 
 export const api = axios.create({
-  baseURL: `${API_BASE_URL}/api`,
+  baseURL: `${getApiBaseUrl()}/api`,
   headers: { 'Content-Type': 'application/json' },
 });
 

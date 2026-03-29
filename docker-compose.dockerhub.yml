@@ -8,8 +8,6 @@ services:
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -21,8 +19,6 @@ services:
     restart: unless-stopped
     volumes:
       - redis_data:/data
-    ports:
-      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -30,12 +26,7 @@ services:
       retries: 5
 
   server:
-    build:
-      context: .
-      dockerfile: docker/server.Dockerfile
-      args:
-        NODE_IMAGE: ${NODE_IMAGE:-node:20-alpine}
-        PNPM_REGISTRY: ${PNPM_REGISTRY:-https://registry.npmmirror.com}
+    image: ${MOCKTRADE_SERVER_IMAGE:-drleomeng/mocktrade-server:v0.1.1}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -55,37 +46,25 @@ services:
       AI_API_BASE: ${AI_API_BASE:-}
       AI_API_KEY: ${AI_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-gpt-4o}
+      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-15000}
+      AI_MAX_RETRIES: ${AI_MAX_RETRIES:-2}
+      AI_RETRY_BASE_DELAY_MS: ${AI_RETRY_BASE_DELAY_MS:-800}
       PORT: 3001
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
     volumes:
       - server_uploads:/app/apps/server/uploads
-    ports:
-      - "3001:3001"
 
   web:
-    build:
-      context: .
-      dockerfile: docker/web.Dockerfile
-      args:
-        NODE_IMAGE: ${NODE_IMAGE:-node:20-alpine}
-        PNPM_REGISTRY: ${PNPM_REGISTRY:-https://registry.npmmirror.com}
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
-        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-}
+    image: ${MOCKTRADE_WEB_IMAGE:-drleomeng/mocktrade-web:v0.1.1}
     restart: unless-stopped
     depends_on:
       - server
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
       NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-}
-    ports:
-      - "3000:3000"
 
   nginx:
-    build:
-      context: .
-      dockerfile: docker/nginx.Dockerfile
-      args:
-        NGINX_IMAGE: ${NGINX_IMAGE:-nginx:alpine}
+    image: ${MOCKTRADE_NGINX_IMAGE:-drleomeng/mocktrade-nginx:v0.1.1}
     restart: unless-stopped
     depends_on:
       - web
