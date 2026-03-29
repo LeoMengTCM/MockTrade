@@ -30,8 +30,14 @@ export class TradeController {
   }
 
   @Get('orders')
-  getOrders(@CurrentUser('id') userId: string, @Query('status') status?: string, @Query('page') page = '1', @Query('limit') limit = '20') {
-    return this.tradeService.getOrders(userId, status, parseInt(page), parseInt(limit));
+  getOrders(
+    @CurrentUser('id') userId: string,
+    @Query('status') status?: string,
+    @Query('stockId') stockId?: string,
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+  ) {
+    return this.tradeService.getOrders(userId, status, parseInt(page), parseInt(limit), stockId);
   }
 
   @Get('orders/active')

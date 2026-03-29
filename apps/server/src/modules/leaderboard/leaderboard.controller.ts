@@ -16,17 +16,25 @@ export class LeaderboardController {
 
   @Public()
   @Get(':type')
-  async getLeaderboard(@Param('type') type: string, @Query('seasonId') seasonId?: string, @Query('limit') limit = '100') {
-    const sid = seasonId || (await this.seasonRepo.findOne({ where: { isActive: true } }))?.id;
+  async getLeaderboard(@Param('type') type: string, @Query('seasonId') seasonId?: string, @Query('limit') limit = '100', @Query('order') order?: 'desc' | 'asc') {
+    const activeSeason = await this.seasonRepo.findOne({ where: { isActive: true } });
+    const sid = seasonId || activeSeason?.id;
     if (!sid) return [];
-    return this.leaderboardService.getTop(sid, type, parseInt(limit));
+    if (sid === activeSeason?.id) {
+      await this.leaderboardService.refreshSeasonLeaderboard(sid);
+    }
+    return this.leaderboardService.getTop(sid, type, parseInt(limit), order || 'desc');
   }
 
   @UseGuards(AuthGuard('jwt'))
   @Get(':type/my-rank')
   async getMyRank(@Param('type') type: string, @CurrentUser('id') userId: string, @Query('seasonId') seasonId?: string) {
-    const sid = seasonId || (await this.seasonRepo.findOne({ where: { isActive: true } }))?.id;
+    const activeSeason = await this.seasonRepo.findOne({ where: { isActive: true } });
+    const sid = seasonId || activeSeason?.id;
     if (!sid) return { rank: null, score: 0 };
+    if (sid === activeSeason?.id) {
+      await this.leaderboardService.refreshSeasonLeaderboard(sid);
+    }
     return this.leaderboardService.getMyRank(sid, type, userId);
   }
 }

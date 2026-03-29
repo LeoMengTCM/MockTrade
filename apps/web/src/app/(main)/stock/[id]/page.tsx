@@ -3,13 +3,16 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { translateApiErrorMessage } from '@/lib/api-error';
 import { useMarketStore } from '@/stores/market-store';
 import { useAuthStore } from '@/stores/auth-store';
-import { formatCurrency, formatPercent, formatVolume, timeAgo } from '@/lib/formatters';
+import { StockChart, type StockTradeMarker } from '@/components/shared/StockChart';
+import { formatCountdown, formatCurrency, formatPercent, formatVolume, timeAgo } from '@/lib/formatters';
 import { SentimentTag } from '@/components/shared/SentimentTag';
 import { cn } from '@/lib/cn';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { TradeModal } from '@/components/shared/TradeModal';
 
 interface StockDetail {
   id: string; symbol: string; name: string; persona: string; sector: string;
@@ -20,20 +23,30 @@ interface StockDetail {
 interface NewsItem {
   id: string; title: string; content: string; sentiment: string; impact: string;
   impactLevel: string; publishedAt: string; impactPercents: Record<string, number>;
+  newsType: 'event' | 'recap';
+}
+
+interface FilledOrderItem {
+  id: string;
+  stockId: string;
+  side: 'buy' | 'sell';
+  quantity: number;
+  status: 'filled' | 'pending' | 'cancelled' | 'expired';
+  filledAt: string | null;
 }
 
 export default function StockDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { stocks, marketStatus } = useMarketStore();
+  const { stocks, marketStatus, countdown } = useMarketStore();
   const { isAuthenticated } = useAuthStore();
   const [stock, setStock] = useState<StockDetail | null>(null);
   const [news, setNews] = useState<NewsItem[]>([]);
-  const [tab, setTab] = useState<'news' | 'about'>('news');
-  const [orderSide, setOrderSide] = useState<'buy' | 'sell' | null>(null);
-  const [orderQty, setOrderQty] = useState('100');
-  const [ordering, setOrdering] = useState(false);
-  const [orderMsg, setOrderMsg] = useState('');
+  const [newsError, setNewsError] = useState('');
+  const [tradeMarkers, setTradeMarkers] = useState<StockTradeMarker[]>([]);
+  const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
+  const [modalInitialSide, setModalInitialSide] = useState<'buy' | 'sell'>('buy');
+  const [refreshToken, setRefreshToken] = useState(0);
 
   // Real-time price from store
   const liveStock = stocks.find(s => s.id === id);
@@ -42,27 +55,83 @@ export default function StockDetailPage() {
   const change = currentPrice - openPrice;
   const changePct = openPrice > 0 ? change / openPrice : 0;
   const isUp = change >= 0;
+  const marketCountdownLabel = marketStatus === 'opening'
+    ? `距休市 ${formatCountdown(countdown)}`
+    : marketStatus === 'closed' && countdown > 0
+      ? `距开盘 ${formatCountdown(countdown)}`
+      : marketStatus === 'settling'
+        ? '正在结算，稍后开始下一轮'
+        : '';
 
   useEffect(() => {
-    api.get(`/market/stocks/${id}`).then(r => setStock(r.data)).catch(() => {});
-    api.get('/news', { params: { stockId: id, limit: 10 } }).then(r => setNews(r.data.items || [])).catch(() => {});
-  }, [id]);
+    let active = true;
 
-  const submitOrder = async () => {
-    if (!orderSide) return;
-    setOrdering(true);
-    setOrderMsg('');
-    try {
-      await api.post('/trade/orders', { stockId: id, type: 'market', side: orderSide, quantity: parseInt(orderQty) });
-      setOrderMsg(`${orderSide === 'buy' ? 'Bought' : 'Sold'} ${orderQty} shares @ $${currentPrice.toFixed(2)}`);
-      setOrderSide(null);
-    } catch (e: any) {
-      setOrderMsg(e.response?.data?.message || 'Order failed');
-    }
-    setOrdering(false);
-  };
+    const fetchStock = async () => {
+      try {
+        const response = await api.get(`/market/stocks/${id}`);
+        if (!active) return;
+        setStock(response.data);
+      } catch { }
+    };
 
-  if (!stock && !liveStock) return <div className="py-12 text-center text-[var(--text-muted)]">Loading...</div>;
+    const fetchNews = async () => {
+      try {
+        const response = await api.get('/news', { params: { stockId: id, limit: 10 } });
+        if (!active) return;
+        setNews(Array.isArray(response.data?.items) ? response.data.items : []);
+        setNewsError('');
+      } catch {
+        if (!active) return;
+        setNews([]);
+        setNewsError('相关新闻加载失败，请稍后重试');
+      }
+    };
+
+    const fetchTradeMarkers = async () => {
+      if (!isAuthenticated) {
+        if (active) setTradeMarkers([]);
+        return;
+      }
+
+      try {
+        const response = await api.get('/trade/orders', {
+          params: { stockId: id, status: 'filled', limit: 100 },
+        });
+        if (!active) return;
+
+        const orders = Array.isArray(response.data?.items) ? response.data.items as FilledOrderItem[] : [];
+        setTradeMarkers(
+          orders
+            .filter((order) => order.status === 'filled' && order.filledAt)
+            .map((order) => ({
+              id: order.id,
+              side: order.side,
+              quantity: order.quantity,
+              filledAt: order.filledAt as string,
+            })),
+        );
+      } catch {
+        if (!active) return;
+        setTradeMarkers([]);
+      }
+    };
+
+    void fetchStock();
+    void fetchNews();
+    void fetchTradeMarkers();
+
+    const timer = setInterval(() => {
+      void fetchNews();
+      void fetchTradeMarkers();
+    }, 15000);
+
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [id, isAuthenticated, refreshToken]);
+
+  if (!stock && !liveStock) return <div className="py-12 text-center text-[var(--text-muted)]">正在加载股票信息...</div>;
 
   return (
     <div className="space-y-6">
@@ -81,15 +150,28 @@ export default function StockDetailPage() {
         <div className={cn('text-lg font-mono tabular-nums', isUp ? 'text-up' : 'text-down')}>
           {isUp ? '+' : ''}{change.toFixed(2)} ({formatPercent(changePct)})
         </div>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">市场状态：{marketStatus === 'opening' ? '开盘中' : marketStatus === 'settling' ? '结算中' : '休市中'}</p>
+        {marketCountdownLabel && (
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">{marketCountdownLabel}</p>
+        )}
       </div>
+
+      {/* Persona / Company Info */}
+      <div className="rounded-xl border border-[var(--border-color)] bg-accent-primary/5 p-4 text-sm text-[var(--text-secondary)] shadow-soft">
+        <span className="font-semibold text-accent-primary">简介：</span>
+        {stock?.persona || liveStock?.persona}
+        <span className="ml-2 mt-1 block text-xs text-[var(--text-muted)]">行业：{stock?.sector || liveStock?.sector}</span>
+      </div>
+
+      <StockChart stockId={id} tradeMarkers={tradeMarkers} />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: 'Open', value: formatCurrency(openPrice) },
-          { label: 'High', value: formatCurrency(liveStock?.dailyHigh ?? stock?.dailyHigh ?? 0) },
-          { label: 'Low', value: formatCurrency(liveStock?.dailyLow ?? stock?.dailyLow ?? 0) },
-          { label: 'Volume', value: formatVolume(liveStock?.volume ?? stock?.volume ?? 0) },
+          { label: '开盘价', value: formatCurrency(openPrice) },
+          { label: '最高价', value: formatCurrency(liveStock?.dailyHigh ?? stock?.dailyHigh ?? 0) },
+          { label: '最低价', value: formatCurrency(liveStock?.dailyLow ?? stock?.dailyLow ?? 0) },
+          { label: '成交量', value: formatVolume(liveStock?.volume ?? stock?.volume ?? 0) },
         ].map(s => (
           <div key={s.label} className="rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-color)] p-3">
             <div className="text-xs text-[var(--text-muted)]">{s.label}</div>
@@ -101,74 +183,50 @@ export default function StockDetailPage() {
       {/* Trade Buttons */}
       {isAuthenticated && (
         <div className="flex gap-3">
-          <button onClick={() => setOrderSide('buy')} className="flex-1 rounded-lg bg-up py-3 text-center font-semibold text-white hover:bg-up/80">BUY</button>
-          <button onClick={() => setOrderSide('sell')} className="flex-1 rounded-lg border-2 border-down py-3 text-center font-semibold text-down hover:bg-down/10">SELL</button>
+          <button onClick={() => { setModalInitialSide('buy'); setIsTradeModalOpen(true); }} className="flex-1 rounded-xl bg-up py-4 text-center text-lg tracking-widest font-bold text-white hover:bg-up/90 shadow-[0_0_15px_-5px_var(--price-up)] transition-all border border-up/20">买入</button>
+          <button onClick={() => { setModalInitialSide('sell'); setIsTradeModalOpen(true); }} className="flex-1 rounded-xl bg-down py-4 text-center text-lg tracking-widest font-bold text-white hover:bg-down/90 shadow-[0_0_15px_-5px_var(--price-down)] transition-all border border-down/20">卖出</button>
         </div>
       )}
 
-      {/* Order Panel */}
-      {orderSide && (
-        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-4 space-y-3">
-          <div className="flex justify-between items-center">
-            <h3 className="font-semibold">{orderSide === 'buy' ? 'Buy' : 'Sell'} {stock?.symbol}</h3>
-            <button onClick={() => setOrderSide(null)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">✕</button>
-          </div>
-          <div>
-            <label className="text-sm text-[var(--text-secondary)]">Quantity</label>
-            <input type="number" value={orderQty} onChange={e => setOrderQty(e.target.value)} min="1"
-              className="w-full mt-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] px-3 py-2 text-sm font-mono outline-none focus:border-accent-primary" />
-          </div>
-          <div className="flex gap-2">
-            {[100, 500, 1000].map(q => (
-              <button key={q} onClick={() => setOrderQty(String(q))} className="flex-1 rounded-lg border border-[var(--border-color)] py-1 text-xs hover:bg-[var(--bg-hover)]">{q}</button>
-            ))}
-          </div>
-          <div className="text-sm text-[var(--text-secondary)]">
-            Est. {orderSide === 'buy' ? 'Cost' : 'Revenue'}: <span className="font-mono">{formatCurrency(currentPrice * parseInt(orderQty || '0'))}</span>
-          </div>
-          <button onClick={submitOrder} disabled={ordering}
-            className={cn('w-full rounded-lg py-2.5 font-medium text-white', orderSide === 'buy' ? 'bg-up hover:bg-up/80' : 'bg-down hover:bg-down/80', 'disabled:opacity-50')}>
-            {ordering ? 'Processing...' : `Confirm ${orderSide === 'buy' ? 'Buy' : 'Sell'}`}
-          </button>
-          {orderMsg && <div className="text-sm text-center text-[var(--text-secondary)]">{orderMsg}</div>}
-        </div>
-      )}
+      <TradeModal
+        isOpen={isTradeModalOpen}
+        onClose={() => setIsTradeModalOpen(false)}
+        stockId={id}
+        stockSymbol={stock?.symbol || liveStock?.symbol || ''}
+        currentPrice={currentPrice}
+        initialSide={modalInitialSide}
+        onOrderSuccess={() => setRefreshToken(v => v + 1)}
+      />
 
-      {/* Tabs */}
-      <div className="flex gap-4 border-b border-[var(--border-color)]">
-        {(['news', 'about'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={cn('pb-2 text-sm font-medium border-b-2 -mb-px', tab === t ? 'border-accent-primary text-[var(--text-primary)]' : 'border-transparent text-[var(--text-muted)]')}>
-            {t === 'news' ? 'News' : 'About'}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'news' ? (
+      <div className="pt-4 border-t border-[var(--border-color)]">
+        <h3 className="font-semibold mb-4 text-lg">相关新闻</h3>
         <div className="space-y-3">
-          {news.length === 0 && <p className="text-sm text-[var(--text-muted)]">No news yet</p>}
+          {newsError && <p className="text-sm text-red-400">{newsError}</p>}
+          {!newsError && news.length === 0 && <p className="text-sm text-[var(--text-muted)]">暂无相关新闻</p>}
           {news.map(n => (
-            <Link key={n.id} href={`/news/${n.id}`} className="block rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-4 hover:bg-[var(--bg-hover)]">
+            <Link key={n.id} href={`/news/${n.id}`} className="block rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-4 hover:bg-[var(--bg-hover)] shadow-soft transition-all">
               <div className="flex items-center gap-2 mb-2">
-                <SentimentTag sentiment={n.sentiment as any} />
+                <SentimentTag sentiment={n.sentiment as any} newsType={n.newsType} />
                 <span className="text-xs text-[var(--text-muted)]">{timeAgo(n.publishedAt)}</span>
+                <span className="rounded-full bg-[var(--bg-primary)] px-2 py-0.5 text-[11px] text-[var(--text-muted)] border border-[var(--border-color)]">
+                  {n.newsType === 'recap' ? '结果回顾' : '事件新闻'}
+                </span>
               </div>
               <h4 className="font-medium">{n.title}</h4>
-              {n.impactPercents && n.impactPercents[id] && (
+              {n.newsType === 'recap' && n.impactPercents && typeof n.impactPercents[id] === 'number' && (
                 <div className={cn('text-xs mt-1 font-mono', n.impactPercents[id] >= 0 ? 'text-up' : 'text-down')}>
-                  Impact: {n.impactPercents[id] >= 0 ? '+' : ''}{(n.impactPercents[id] * 100).toFixed(1)}%
+                  次日结果：{n.impactPercents[id] >= 0 ? '+' : ''}{(n.impactPercents[id] * 100).toFixed(1)}%
+                </div>
+              )}
+              {n.newsType === 'event' && (
+                <div className="mt-1 text-xs text-[var(--text-muted)]">
+                  这条消息已经发布，实际结果会在下一轮开始后公布。
                 </div>
               )}
             </Link>
           ))}
         </div>
-      ) : (
-        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-4">
-          <h3 className="font-semibold mb-2">About {stock?.name}</h3>
-          <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap">{stock?.persona}</p>
-          <div className="mt-3 text-xs text-[var(--text-muted)]">Sector: {stock?.sector}</div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

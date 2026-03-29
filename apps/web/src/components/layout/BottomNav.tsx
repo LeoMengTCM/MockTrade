@@ -6,18 +6,18 @@ import { BarChart3, Wallet, Trophy, Newspaper, UserCircle } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
 const TABS = [
-  { href: '/', icon: BarChart3, label: 'Market' },
-  { href: '/portfolio', icon: Wallet, label: 'Trade' },
-  { href: '/leaderboard', icon: Trophy, label: 'Rank' },
-  { href: '/news', icon: Newspaper, label: 'News' },
-  { href: '/profile', icon: UserCircle, label: 'Me' },
+  { href: '/', icon: BarChart3, label: '市场' },
+  { href: '/portfolio', icon: Wallet, label: '持仓' },
+  { href: '/leaderboard', icon: Trophy, label: '排名' },
+  { href: '/news', icon: Newspaper, label: '新闻' },
+  { href: '/profile', icon: UserCircle, label: '我的' },
 ];
 
 export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--border-color)] bg-[var(--bg-secondary)] md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-[100] border-t border-[var(--border-color)] glass-bar pb-safe md:hidden">
       <div className="flex h-14 items-center justify-around">
         {TABS.map((tab) => {
           const isActive = pathname === tab.href || (tab.href !== '/' && pathname.startsWith(tab.href));

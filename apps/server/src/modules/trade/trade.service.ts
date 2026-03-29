@@ -6,6 +6,7 @@ import { StockEntity } from '../../entities/stock.entity';
 import { SeasonEntity } from '../../entities/season.entity';
 import { MarketStateService } from '../market/market-state.service';
 import { MarketGateway } from '../market/market.gateway';
+import { LeaderboardService } from '../leaderboard/leaderboard.service';
 import { AccountService } from './account.service';
 import { PositionService } from './position.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -23,6 +24,7 @@ export class TradeService {
     private readonly account: AccountService,
     private readonly position: PositionService,
     private readonly gateway: MarketGateway,
+    private readonly leaderboard: LeaderboardService,
   ) {}
 
   async createOrder(userId: string, dto: CreateOrderDto) {
@@ -78,6 +80,10 @@ export class TradeService {
 
       this.gateway.sendToUser(userId, WsEvent.ORDER_FILLED, { orderId: order.id, side: 'buy', ticker: stock.symbol, price, quantity: dto.quantity });
       this.logger.log(`BUY filled: ${stock.symbol} x${dto.quantity} @${price} for user=${userId}`);
+
+      // Update leaderboard asynchronously
+      this.updateLeaderboardForUser(userId, seasonId).catch(() => {});
+
       return order;
     } else {
       // Limit buy: freeze funds, create pending order
@@ -117,6 +123,10 @@ export class TradeService {
 
       this.gateway.sendToUser(userId, WsEvent.ORDER_FILLED, { orderId: order.id, side: 'sell', ticker: stock.symbol, price, quantity: dto.quantity });
       this.logger.log(`SELL filled: ${stock.symbol} x${dto.quantity} @${price} for user=${userId}`);
+
+      // Update leaderboard asynchronously
+      this.updateLeaderboardForUser(userId, seasonId).catch(() => {});
+
       return order;
     } else {
       // Limit sell: position already reduced, create pending
@@ -139,60 +149,64 @@ export class TradeService {
     const order = await this.orderRepo.findOne({ where: { id: orderId, userId, status: 'pending' } });
     if (!order) throw new BadRequestException('Order not found or not cancellable');
 
-    const season = await this.seasonRepo.findOne({ where: { isActive: true } });
-    if (!season) throw new BadRequestException('No active season');
-
     order.status = 'cancelled';
     await this.orderRepo.save(order);
 
     if (order.side === 'buy') {
       // Unfreeze cash
       const totalCost = +(Number(order.price) * order.quantity * (1 + COMMISSION_RATE)).toFixed(2);
-      await this.account.unfreezeCash(userId, season.id, totalCost);
+      await this.account.unfreezeCash(userId, order.seasonId, totalCost);
     } else {
       // Restore position
-      await this.position.addPosition(userId, order.stockId, season.id, order.quantity, Number(order.price));
+      await this.position.addPosition(userId, order.stockId, order.seasonId, order.quantity, Number(order.price));
     }
 
     this.gateway.sendToUser(userId, WsEvent.ORDER_CANCELLED, { orderId });
     return { message: 'Order cancelled' };
   }
 
-  async getOrders(userId: string, status?: string, page = 1, limit = 20) {
+  async getOrders(userId: string, status?: string, page = 1, limit = 20, stockId?: string) {
+    const season = await this.seasonRepo.findOne({ where: { isActive: true } });
+    if (!season) return { items: [], total: 0, page, limit };
+
     const qb = this.orderRepo.createQueryBuilder('o')
       .where('o.userId = :userId', { userId })
+      .andWhere('o.seasonId = :seasonId', { seasonId: season.id })
       .orderBy('o.createdAt', 'DESC')
       .skip((page - 1) * limit).take(limit);
     if (status) qb.andWhere('o.status = :status', { status });
+    if (stockId) qb.andWhere('o.stockId = :stockId', { stockId });
     const [items, total] = await qb.getManyAndCount();
     return { items, total, page, limit };
   }
 
   async getActiveOrders(userId: string) {
-    return this.orderRepo.find({ where: { userId, status: 'pending' }, order: { createdAt: 'DESC' } });
+    const season = await this.seasonRepo.findOne({ where: { isActive: true } });
+    if (!season) return [];
+    return this.orderRepo.find({
+      where: { userId, seasonId: season.id, status: 'pending' },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   /**
    * Called by LimitOrderMatcher when a limit order is filled
    */
   async fillLimitOrder(order: OrderEntity, fillPrice: number): Promise<void> {
-    const season = await this.seasonRepo.findOne({ where: { isActive: true } });
-    if (!season) return;
-
     const commission = +(fillPrice * order.quantity * COMMISSION_RATE).toFixed(2);
 
     if (order.side === 'buy') {
       const originalFrozen = +(Number(order.price) * order.quantity * (1 + COMMISSION_RATE)).toFixed(2);
       const actualCost = +(fillPrice * order.quantity + commission).toFixed(2);
       // Deduct from frozen, refund difference
-      await this.account.deductFrozen(order.userId, season.id, originalFrozen);
+      await this.account.deductFrozen(order.userId, order.seasonId, originalFrozen);
       if (actualCost < originalFrozen) {
-        await this.account.addCash(order.userId, season.id, +(originalFrozen - actualCost).toFixed(2));
+        await this.account.addCash(order.userId, order.seasonId, +(originalFrozen - actualCost).toFixed(2));
       }
-      await this.position.addPosition(order.userId, order.stockId, season.id, order.quantity, fillPrice);
+      await this.position.addPosition(order.userId, order.stockId, order.seasonId, order.quantity, fillPrice);
     } else {
       const netRevenue = +(fillPrice * order.quantity - commission).toFixed(2);
-      await this.account.addCash(order.userId, season.id, netRevenue);
+      await this.account.addCash(order.userId, order.seasonId, netRevenue);
     }
 
     order.filledPrice = fillPrice as any;
@@ -206,5 +220,19 @@ export class TradeService {
     this.gateway.sendToUser(order.userId, WsEvent.ORDER_FILLED, {
       orderId: order.id, side: order.side, ticker: stock?.symbol, price: fillPrice, quantity: order.quantity,
     });
+
+    // Update leaderboard asynchronously
+    this.updateLeaderboardForUser(order.userId, order.seasonId).catch(() => {});
+  }
+
+  private async updateLeaderboardForUser(userId: string, seasonId: string): Promise<void> {
+    try {
+      const account = await this.account.getAccount(userId, seasonId);
+      const marketValue = await this.position.getTotalMarketValue(userId, seasonId);
+      const totalAssets = +(account.availableCash + account.frozenCash + marketValue).toFixed(2);
+      await this.leaderboard.updateAssets(seasonId, userId, totalAssets);
+    } catch (e) {
+      this.logger.warn(`Failed to update leaderboard for user=${userId}: ${e}`);
+    }
   }
 }

@@ -1,6 +1,13 @@
 export type NewsImpact = 'positive' | 'negative' | 'neutral';
 export type NewsLevel = 'minor' | 'medium' | 'major';
 export type NewsSentiment = 'bullish' | 'bearish' | 'funny' | 'neutral' | 'breaking';
+export type NewsType = 'event' | 'recap';
+
+export interface RelatedNewsStock {
+  id: string;
+  symbol: string;
+  name: string;
+}
 
 export interface News {
   id: string;
@@ -11,6 +18,10 @@ export interface News {
   impactLevel: NewsLevel;
   relatedStockIds: string[];
   impactPercents: Record<string, number>; // stockId -> impact%
+  relatedStocks: RelatedNewsStock[];
+  newsType: NewsType;
+  sourceNewsId: string | null;
+  publishedCycle: number;
   seasonId: string;
   storylineId: string | null;
   publishedAt: string;

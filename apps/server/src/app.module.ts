@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { BullModule } from '@nestjs/bull';
 import { ConfigModule } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { DatabaseModule } from './database/database.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -14,10 +16,23 @@ import { AchievementModule } from './modules/achievement/achievement.module';
 import { SocialModule } from './modules/social/social.module';
 import { HealthModule } from './modules/health/health.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { UploadModule } from './modules/upload/upload.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'uploads'),
+      serveRoot: '/uploads',
+    }),
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        url: config.get<string>('REDIS_URL') || 'redis://localhost:6379',
+      }),
+    }),
     DatabaseModule,
     RedisModule,
     AuthModule,
@@ -32,6 +47,7 @@ import { AdminModule } from './modules/admin/admin.module';
     SocialModule,
     HealthModule,
     AdminModule,
+    UploadModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }

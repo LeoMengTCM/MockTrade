@@ -2,54 +2,224 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --bg-primary: #F8F9FA;
-  --bg-secondary: #FFFFFF;
-  --bg-tertiary: #F1F3F5;
-  --bg-hover: #E9ECEF;
-  --text-primary: #111827;
-  --text-secondary: #4B5563;
-  --text-muted: #9CA3AF;
-  --border-color: #E5E7EB;
+@layer base {
+  :root {
+    /* ----------------------------------
+       Light Theme (Apple / Claude Minimalist)
+    ----------------------------------- */
+    --bg-primary: #FAFAFB;
+    /* Almost white */
+    --bg-secondary: #FFFFFF;
+    /* Pure white */
+    --bg-tertiary: #F1F3F5;
+    /* Soft gray */
+    --bg-hover: rgba(0, 0, 0, 0.04);
+
+    --text-primary: #111111;
+    --text-secondary: #555555;
+    --text-muted: #888888;
+
+    --border-color: rgba(0, 0, 0, 0.06);
+
+    --price-up: #FF3B30;
+    /* iOS Red */
+    --price-down: #34C759;
+    /* iOS Green */
+    --price-up-soft: rgba(255, 59, 48, 0.1);
+    --price-down-soft: rgba(52, 199, 89, 0.1);
+    --price-up-strong: rgba(255, 59, 48, 0.9);
+    --price-down-strong: rgba(52, 199, 89, 0.9);
+
+    --price-up-flash: rgba(255, 59, 48, 0.2);
+    --price-down-flash: rgba(52, 199, 89, 0.2);
+  }
+
+  .dark {
+    /* ----------------------------------
+       Dark Theme (Deep Void / Clean)
+    ----------------------------------- */
+    --bg-primary: #0A0A0A;
+    --bg-secondary: #121212;
+    --bg-tertiary: #1A1A1A;
+    --bg-hover: rgba(255, 255, 255, 0.05);
+
+    --text-primary: #EDEDED;
+    --text-secondary: #A0A0A0;
+    --text-muted: #666666;
+
+    --border-color: rgba(255, 255, 255, 0.08);
+
+    --price-up: #FF453A;
+    /* iOS Dark Red */
+    --price-down: #30D158;
+    /* iOS Dark Green */
+    --price-up-soft: rgba(255, 69, 58, 0.15);
+    --price-down-soft: rgba(48, 209, 88, 0.15);
+    --price-up-strong: rgba(255, 69, 58, 0.85);
+    --price-down-strong: rgba(48, 209, 88, 0.85);
+
+    --price-up-flash: rgba(255, 69, 58, 0.25);
+    --price-down-flash: rgba(48, 209, 88, 0.25);
+  }
+
+  /* Support color inversions for settings */
+  :root[data-price-color-mode='green-up-red-down'] {
+    --price-up: #30D158;
+    --price-down: #FF453A;
+    --price-up-soft: rgba(48, 209, 88, 0.15);
+    --price-down-soft: rgba(255, 69, 58, 0.15);
+    --price-up-strong: rgba(48, 209, 88, 0.85);
+    --price-down-strong: rgba(255, 69, 58, 0.85);
+    --price-up-flash: rgba(48, 209, 88, 0.25);
+    --price-down-flash: rgba(255, 69, 58, 0.25);
+  }
+
+  .light[data-price-color-mode='green-up-red-down'] {
+    --price-up: #34C759;
+    --price-down: #FF3B30;
+    --price-up-soft: rgba(52, 199, 89, 0.1);
+    --price-down-soft: rgba(255, 59, 48, 0.1);
+    --price-up-strong: rgba(52, 199, 89, 0.9);
+    --price-down-strong: rgba(255, 59, 48, 0.9);
+    --price-up-flash: rgba(52, 199, 89, 0.2);
+    --price-down-flash: rgba(255, 59, 48, 0.2);
+  }
+
+  .light[data-price-color-mode='red-up-green-down'] {
+    --price-up: #FF3B30;
+    --price-down: #34C759;
+    --price-up-soft: rgba(255, 59, 48, 0.1);
+    --price-down-soft: rgba(52, 199, 89, 0.1);
+    --price-up-strong: rgba(255, 59, 48, 0.9);
+    --price-down-strong: rgba(52, 199, 89, 0.9);
+    --price-up-flash: rgba(255, 59, 48, 0.2);
+    --price-down-flash: rgba(52, 199, 89, 0.2);
+  }
+
+  .dark[data-price-color-mode='red-up-green-down'] {
+    --price-up: #FF453A;
+    --price-down: #30D158;
+    --price-up-soft: rgba(255, 69, 58, 0.15);
+    --price-down-soft: rgba(48, 209, 88, 0.15);
+    --price-up-strong: rgba(255, 69, 58, 0.85);
+    --price-down-strong: rgba(48, 209, 88, 0.85);
+    --price-up-flash: rgba(255, 69, 58, 0.25);
+    --price-down-flash: rgba(48, 209, 88, 0.25);
+  }
+
+  body {
+    @apply text-[var(--text-primary)] bg-[var(--bg-primary)] antialiased tracking-normal;
+    /* iOS Safari smooth scrolling and font rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'cv11', 'ss01', 'ss03', 'cv02';
+  }
 }
 
-.dark {
-  --bg-primary: #0B0E11;
-  --bg-secondary: #121519;
-  --bg-tertiary: #1A1E24;
-  --bg-hover: #222830;
-  --text-primary: #E5E7EB;
-  --text-secondary: #9CA3AF;
-  --text-muted: #6B7280;
-  --border-color: #1F2937;
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Glassmorphism that looks clean in both themes */
+  .glass-panel {
+    background-color: var(--bg-secondary);
+    @apply border border-[var(--border-color)] shadow-soft;
+  }
+
+  /* Blurry TopBar/BottomNav variant */
+  .glass-bar {
+    background-color: color-mix(in srgb, var(--bg-primary) 80%, transparent);
+    @apply backdrop-blur-2xl;
+  }
+
+  .glass-panel-hover {
+    @apply hover:bg-[var(--bg-hover)] transition-all duration-300;
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
 
-body {
-  color: var(--text-primary);
-  background: var(--bg-primary);
-  font-feature-settings: 'rlig' 1, 'calt' 1;
+/* Price specific utilities extending TW colors */
+.text-up {
+  color: var(--price-up) !important;
 }
 
-/* Tabular numbers for price displays */
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
+.text-down {
+  color: var(--price-down) !important;
 }
 
-/* Price flash animations */
+.bg-up {
+  background-color: var(--price-up) !important;
+}
+
+.bg-down {
+  background-color: var(--price-down) !important;
+}
+
+.border-up {
+  border-color: var(--price-up) !important;
+}
+
+.border-down {
+  border-color: var(--price-down) !important;
+}
+
+.bg-up\/10 {
+  background-color: var(--price-up-soft) !important;
+  color: var(--price-up) !important;
+}
+
+.bg-down\/10 {
+  background-color: var(--price-down-soft) !important;
+  color: var(--price-down) !important;
+}
+
+.bg-up\/80 {
+  background-color: var(--price-up-strong) !important;
+}
+
+.bg-down\/80 {
+  background-color: var(--price-down-strong) !important;
+}
+
+.hover\:bg-up\/80:hover {
+  background-color: var(--price-up-strong) !important;
+}
+
+.hover\:bg-down\/80:hover {
+  background-color: var(--price-down-strong) !important;
+}
+
+/* Subtle Flash Animations without heavy glow */
 @keyframes flash-up {
-  0% { background-color: rgba(232, 65, 66, 0.3); }
-  100% { background-color: transparent; }
+  0% {
+    background-color: var(--price-up-flash);
+    color: var(--price-up);
+  }
+
+  100% {
+    background-color: transparent;
+  }
 }
 
 @keyframes flash-down {
-  0% { background-color: rgba(0, 185, 107, 0.3); }
-  100% { background-color: transparent; }
+  0% {
+    background-color: var(--price-down-flash);
+    color: var(--price-down);
+  }
+
+  100% {
+    background-color: transparent;
+  }
 }
 
 .flash-up {
-  animation: flash-up 0.3s ease-out;
+  animation: flash-up 0.5s ease-out;
 }
 
 .flash-down {
-  animation: flash-down 0.3s ease-out;
+  animation: flash-down 0.5s ease-out;
 }

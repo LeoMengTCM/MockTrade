@@ -5,6 +5,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Public } from '../../common/decorators/public.decorator';
+import { CreateSeasonDto } from './dto/create-season.dto';
 
 @Controller('seasons')
 export class SeasonController {
@@ -38,7 +39,7 @@ export class SeasonController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('admin')
   @Post()
-  createSeason(@Body() body: { name: string; startDate: string; endDate: string }) {
+  createSeason(@Body() body: CreateSeasonDto) {
     return this.seasonService.createSeason(body.name, new Date(body.startDate), new Date(body.endDate));
   }
 

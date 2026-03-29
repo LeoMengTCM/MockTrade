@@ -11,6 +11,8 @@ import { TickScheduler } from './engine/tick-scheduler';
 import { KLineService } from './kline.service';
 import { MarketController } from './market.controller';
 import { MarketGateway } from './market.gateway';
+import { DisplaySettingsService } from './display-settings.service';
+import { ManualPriceInterventionService } from './manual-price-intervention.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([StockEntity, StockTickEntity])],
@@ -24,7 +26,9 @@ import { MarketGateway } from './market.gateway';
     TickScheduler,
     KLineService,
     MarketGateway,
+    DisplaySettingsService,
+    ManualPriceInterventionService,
   ],
-  exports: [MarketStateService, EventImpact, KLineService, MarketGateway],
+  exports: [MarketStateService, EventImpact, KLineService, MarketGateway, DisplaySettingsService, ManualPriceInterventionService],
 })
 export class MarketModule {}

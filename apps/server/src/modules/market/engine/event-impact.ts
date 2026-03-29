@@ -6,6 +6,7 @@ export interface StockImpact {
   decayRate: number;
   startTime: number;
   duration: number;
+  rampUpDuration: number;
 }
 
 @Injectable()
@@ -14,12 +15,14 @@ export class EventImpact {
   private activeImpacts: StockImpact[] = [];
 
   inject(stockId: string, impactPercent: number, durationMs = 60000): void {
+    const rampUpDuration = Math.max(5000, Math.min(Math.floor(durationMs * 0.35), 20000));
     this.activeImpacts.push({
       stockId,
       impactPercent,
       decayRate: 3 / durationMs,
       startTime: Date.now(),
       duration: durationMs,
+      rampUpDuration,
     });
     this.logger.log(`Impact: stock=${stockId}, ${(impactPercent * 100).toFixed(1)}%, ${durationMs}ms`);
   }
@@ -30,7 +33,12 @@ export class EventImpact {
     let total = 0;
     for (const i of this.activeImpacts) {
       if (i.stockId !== stockId) continue;
-      total += i.impactPercent * Math.exp(-i.decayRate * (now - i.startTime));
+      const elapsed = now - i.startTime;
+      const rampProgress = Math.min(elapsed / i.rampUpDuration, 1);
+      const rampFactor = rampProgress * rampProgress * (3 - 2 * rampProgress);
+      const decayElapsed = Math.max(elapsed - i.rampUpDuration, 0);
+      const decayFactor = Math.exp(-i.decayRate * decayElapsed);
+      total += i.impactPercent * rampFactor * decayFactor;
     }
     return total;
   }

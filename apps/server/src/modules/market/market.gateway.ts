@@ -1,20 +1,34 @@
 import {
-  WebSocketGateway, WebSocketServer, OnGatewayConnection, OnGatewayDisconnect, SubscribeMessage,
+  WebSocketGateway, WebSocketServer, OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, SubscribeMessage,
 } from '@nestjs/websockets';
 import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { WsEvent, MarketStatus } from '@mocktrade/shared';
+import { MarketStateService } from './market-state.service';
 
 @WebSocketGateway({ cors: { origin: '*' }, namespace: '/' })
-export class MarketGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class MarketGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
   @WebSocketServer() server: Server;
   private readonly logger = new Logger(MarketGateway.name);
   private connectedClients = 0;
+
+  constructor(private readonly marketState: MarketStateService) {}
+
+  afterInit() {
+    this.marketState.onStatusChange((status, countdown) => {
+      this.broadcastMarketStatus(status, countdown);
+    });
+  }
 
   handleConnection(client: Socket) {
     this.connectedClients++;
     client.join('market');
     this.logger.log(`Connected: ${client.id} (${this.connectedClients})`);
+    const snapshot = this.marketState.getStatusSnapshot();
+    client.emit(WsEvent.MARKET_STATUS, {
+      status: snapshot.status,
+      countdown: snapshot.countdown,
+    });
   }
 
   handleDisconnect() { this.connectedClients--; }

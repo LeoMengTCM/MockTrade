@@ -29,6 +29,10 @@ export class RedisService {
     await this.client.hset(key, field, value);
   }
 
+  async hDel(key: string, field: string): Promise<void> {
+    await this.client.hdel(key, field);
+  }
+
   async hGetAll(key: string): Promise<Record<string, string>> {
     return this.client.hgetall(key);
   }
@@ -47,6 +51,19 @@ export class RedisService {
     stop: number,
   ): Promise<Array<{ member: string; score: number }>> {
     const result = await this.client.zrevrange(key, start, stop, 'WITHSCORES');
+    const items: Array<{ member: string; score: number }> = [];
+    for (let i = 0; i < result.length; i += 2) {
+      items.push({ member: result[i], score: parseFloat(result[i + 1]) });
+    }
+    return items;
+  }
+
+  async zRangeWithScores(
+    key: string,
+    start: number,
+    stop: number,
+  ): Promise<Array<{ member: string; score: number }>> {
+    const result = await this.client.zrange(key, start, stop, 'WITHSCORES');
     const items: Array<{ member: string; score: number }> = [];
     for (let i = 0; i < result.length; i += 2) {
       items.push({ member: result[i], score: parseFloat(result[i + 1]) });

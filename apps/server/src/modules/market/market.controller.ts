@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { StockEntity } from '../../entities/stock.entity';
 import { MarketStateService } from './market-state.service';
 import { KLineService } from './kline.service';
+import { DisplaySettingsService } from './display-settings.service';
 import { Public } from '../../common/decorators/public.decorator';
 
 @Controller('market')
@@ -12,17 +13,13 @@ export class MarketController {
     @InjectRepository(StockEntity) private readonly stockRepo: Repository<StockEntity>,
     private readonly marketState: MarketStateService,
     private readonly klineService: KLineService,
+    private readonly displaySettings: DisplaySettingsService,
   ) {}
 
   @Public()
   @Get('status')
   getStatus() {
-    return {
-      status: this.marketState.getStatus(),
-      cycleCount: this.marketState.getCycleCount(),
-      openDuration: this.marketState.getOpenDuration(),
-      closeDuration: this.marketState.getCloseDuration(),
-    };
+    return this.marketState.getStatusSnapshot();
   }
 
   @Public()
@@ -36,6 +33,12 @@ export class MarketController {
       dailyLow: Number(s.dailyLow), volume: Number(s.volume),
       changePercent: Number(s.openPrice) > 0 ? (Number(s.currentPrice) - Number(s.openPrice)) / Number(s.openPrice) : 0,
     }));
+  }
+
+  @Public()
+  @Get('display-settings')
+  async getDisplaySettings() {
+    return this.displaySettings.getSettings();
   }
 
   @Public()
@@ -53,7 +56,7 @@ export class MarketController {
 
   @Public()
   @Get('stocks/:id/kline')
-  async getKLine(@Param('id') id: string, @Query('periods') periods?: string) {
-    return this.klineService.getKLines(id, periods ? parseInt(periods) : 100);
+  async getKLine(@Param('id') id: string, @Query('periods') periods?: string, @Query('resolution') resolution?: string) {
+    return this.klineService.getKLines(id, periods ? parseInt(periods) : 100, resolution || '1m');
   }
 }

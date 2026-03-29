@@ -2,7 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserEntity } from '../../entities/user.entity';
+import { PositionEntity } from '../../entities/position.entity';
+import { StockEntity } from '../../entities/stock.entity';
 import { RedisService } from '../redis/redis.service';
+import { INITIAL_CAPITAL } from '@mocktrade/shared';
 
 export interface LeaderboardEntry {
   rank: number;
@@ -18,6 +21,8 @@ export class LeaderboardService {
 
   constructor(
     @InjectRepository(UserEntity) private readonly userRepo: Repository<UserEntity>,
+    @InjectRepository(PositionEntity) private readonly positionRepo: Repository<PositionEntity>,
+    @InjectRepository(StockEntity) private readonly stockRepo: Repository<StockEntity>,
     private readonly redis: RedisService,
   ) {}
 
@@ -27,8 +32,11 @@ export class LeaderboardService {
     await this.redis.zAdd(this.key(seasonId, type), score, userId);
   }
 
-  async getTop(seasonId: string, type: string, limit = 100): Promise<LeaderboardEntry[]> {
-    const items = await this.redis.zRevRangeWithScores(this.key(seasonId, type), 0, limit - 1);
+  async getTop(seasonId: string, type: string, limit = 100, order: 'desc' | 'asc' = 'desc'): Promise<LeaderboardEntry[]> {
+    const items = order === 'desc'
+      ? await this.redis.zRevRangeWithScores(this.key(seasonId, type), 0, limit - 1)
+      : await this.redis.zRangeWithScores(this.key(seasonId, type), 0, limit - 1);
+      
     const entries: LeaderboardEntry[] = [];
     for (let i = 0; i < items.length; i++) {
       const user = await this.userRepo.findOne({ where: { id: items[i].member } });
@@ -52,7 +60,39 @@ export class LeaderboardService {
 
   async updateAssets(seasonId: string, userId: string, totalAssets: number): Promise<void> {
     await this.updateScore(seasonId, 'assets', userId, totalAssets);
-    const returnRate = (totalAssets - 1000000) / 1000000;
+    const returnRate = (totalAssets - INITIAL_CAPITAL) / INITIAL_CAPITAL;
     await this.updateScore(seasonId, 'return', userId, returnRate);
+  }
+
+  async refreshSeasonLeaderboard(seasonId: string): Promise<void> {
+    const users = await this.userRepo.find();
+    const positions = await this.positionRepo.find({ where: { seasonId } });
+    const stocks = await this.stockRepo.find();
+
+    const stockPriceMap = new Map(stocks.map((stock) => [stock.id, Number(stock.currentPrice)]));
+    const positionsByUser = new Map<string, PositionEntity[]>();
+
+    for (const position of positions) {
+      const userPositions = positionsByUser.get(position.userId) || [];
+      userPositions.push(position);
+      positionsByUser.set(position.userId, userPositions);
+    }
+
+    for (const user of users) {
+      const accountRaw = await this.redis.get(`account:${user.id}:${seasonId}`);
+      const account = accountRaw
+        ? JSON.parse(accountRaw) as { availableCash: number; frozenCash: number }
+        : { availableCash: INITIAL_CAPITAL, frozenCash: 0 };
+
+      const marketValue = (positionsByUser.get(user.id) || []).reduce((sum, position) => {
+        if (position.quantity <= 0) return sum;
+        return sum + position.quantity * (stockPriceMap.get(position.stockId) || 0);
+      }, 0);
+
+      const totalAssets = +(Number(account.availableCash) + Number(account.frozenCash) + marketValue).toFixed(2);
+      await this.updateAssets(seasonId, user.id, totalAssets);
+    }
+
+    this.logger.debug(`Leaderboard refreshed for season=${seasonId}`);
   }
 }

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { OrderEntity } from '../../entities/order.entity';
 import { StockEntity } from '../../entities/stock.entity';
+import { SeasonEntity } from '../../entities/season.entity';
 import { MarketStateService } from '../market/market-state.service';
 import { TradeService } from './trade.service';
 import { MarketStatus } from '@mocktrade/shared';
@@ -15,6 +16,7 @@ export class LimitOrderMatcher implements OnModuleInit {
   constructor(
     @InjectRepository(OrderEntity) private readonly orderRepo: Repository<OrderEntity>,
     @InjectRepository(StockEntity) private readonly stockRepo: Repository<StockEntity>,
+    @InjectRepository(SeasonEntity) private readonly seasonRepo: Repository<SeasonEntity>,
     private readonly marketState: MarketStateService,
     private readonly tradeService: TradeService,
   ) {}
@@ -37,7 +39,12 @@ export class LimitOrderMatcher implements OnModuleInit {
   private async matchAll() {
     if (this.marketState.getStatus() !== MarketStatus.OPENING) return;
 
-    const pendingOrders = await this.orderRepo.find({ where: { status: 'pending', type: 'limit' } });
+    const season = await this.seasonRepo.findOne({ where: { isActive: true } });
+    if (!season) return;
+
+    const pendingOrders = await this.orderRepo.find({
+      where: { status: 'pending', type: 'limit', seasonId: season.id },
+    });
     if (pendingOrders.length === 0) return;
 
     // Group by stock for efficiency

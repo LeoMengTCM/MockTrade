@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { TopBar } from '@/components/layout/TopBar';
 import { BottomNav } from '@/components/layout/BottomNav';
+import { NewsToast } from '@/components/shared/NewsToast';
 import { useAuthStore } from '@/stores/auth-store';
 import { useMarketStore } from '@/stores/market-store';
 import { connectSocket, disconnectSocket, getSocket } from '@/lib/websocket';
@@ -11,6 +12,8 @@ import { api } from '@/lib/api';
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const { loadFromStorage } = useAuthStore();
   const { setStocks, updateStockPrice, setMarketStatus } = useMarketStore();
+  const [toastNews, setToastNews] = useState<{ id: string; title: string; sentiment: string } | null>(null);
+  const dismissToast = useCallback(() => setToastNews(null), []);
 
   useEffect(() => {
     loadFromStorage();
@@ -20,7 +23,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     // Fetch initial stock data
     api.get('/market/stocks').then(res => setStocks(res.data)).catch(() => {});
     api.get('/market/status').then(res => {
-      setMarketStatus(res.data.status, 0);
+      setMarketStatus(res.data.status, res.data.countdown || 0);
     }).catch(() => {});
 
     // Connect WebSocket
@@ -34,6 +37,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     });
     socket.on('market:status', (data: any) => {
       setMarketStatus(data.status, data.countdown);
+      api.get('/market/stocks').then(res => setStocks(res.data)).catch(() => {});
+    });
+    socket.on('news:published', (data: any) => {
+      if (data?.id && data?.title) {
+        setToastNews({ id: data.id, title: data.title, sentiment: data.sentiment || 'neutral' });
+      }
     });
 
     // Countdown timer
@@ -54,6 +63,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         {children}
       </main>
       <BottomNav />
+      <NewsToast news={toastNews} onDismiss={dismissToast} />
     </div>
   );
 }

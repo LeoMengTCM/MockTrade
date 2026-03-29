@@ -4,6 +4,7 @@ export * from './types/stock';
 export * from './types/trade';
 export * from './types/season';
 export * from './types/news';
+export * from './types/display';
 export * from './types/achievement';
 export * from './types/social';
 

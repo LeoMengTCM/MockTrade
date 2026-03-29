@@ -11,6 +11,7 @@ export class MarketStateService implements OnModuleInit, OnModuleDestroy {
   private status: MarketStatus = MarketStatus.CLOSED;
   private cycleTimer: NodeJS.Timeout | null = null;
   private cycleCount = 0;
+  private statusEndsAt: number | null = null;
   private statusChangeCallbacks: Array<(status: MarketStatus, countdown: number) => void> = [];
   private openDuration = MARKET_OPEN_DURATION_MS;
   private closeDuration = MARKET_CLOSE_DURATION_MS;
@@ -37,6 +38,20 @@ export class MarketStateService implements OnModuleInit, OnModuleDestroy {
   getCycleCount() { return this.cycleCount; }
   getOpenDuration() { return this.openDuration; }
   getCloseDuration() { return this.closeDuration; }
+  getCountdown() {
+    if (!this.statusEndsAt) return 0;
+    return Math.max(0, Math.ceil((this.statusEndsAt - Date.now()) / 1000));
+  }
+
+  getStatusSnapshot() {
+    return {
+      status: this.status,
+      cycleCount: this.cycleCount,
+      countdown: this.getCountdown(),
+      openDuration: this.openDuration,
+      closeDuration: this.closeDuration,
+    };
+  }
 
   onStatusChange(cb: (status: MarketStatus, countdown: number) => void) {
     this.statusChangeCallbacks.push(cb);
@@ -54,13 +69,16 @@ export class MarketStateService implements OnModuleInit, OnModuleDestroy {
   private openMarket() {
     this.status = MarketStatus.OPENING;
     this.cycleCount++;
+    this.statusEndsAt = Date.now() + this.openDuration;
     this.logger.log(`Market OPEN - Cycle #${this.cycleCount}`);
-    this.notify(MarketStatus.OPENING, Math.floor(this.openDuration / 1000));
+    this.notify(MarketStatus.OPENING, this.getCountdown());
     this.cycleTimer = setTimeout(() => this.settleMarket(), this.openDuration);
   }
 
   private async settleMarket() {
     this.status = MarketStatus.SETTLING;
+    this.statusEndsAt = null;
+    this.notify(MarketStatus.SETTLING, 0);
     const stocks = await this.stockRepo.find({ where: { isActive: true } });
     for (const s of stocks) {
       s.prevClosePrice = s.currentPrice;
@@ -72,8 +90,9 @@ export class MarketStateService implements OnModuleInit, OnModuleDestroy {
 
   private closeMarket() {
     this.status = MarketStatus.CLOSED;
+    this.statusEndsAt = Date.now() + this.closeDuration;
     this.logger.log(`Market CLOSED (${this.closeDuration / 1000}s)`);
-    this.notify(MarketStatus.CLOSED, Math.floor(this.closeDuration / 1000));
+    this.notify(MarketStatus.CLOSED, this.getCountdown());
     this.cycleTimer = setTimeout(async () => {
       const stocks = await this.stockRepo.find({ where: { isActive: true } });
       for (const s of stocks) {
@@ -96,7 +115,9 @@ export class MarketStateService implements OnModuleInit, OnModuleDestroy {
   pause() {
     if (this.cycleTimer) { clearTimeout(this.cycleTimer); this.cycleTimer = null; }
     this.status = MarketStatus.CLOSED;
+    this.statusEndsAt = null;
     this.logger.warn('Market PAUSED');
+    this.notify(MarketStatus.CLOSED, 0);
   }
 
   resume() {

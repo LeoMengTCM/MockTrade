@@ -28,6 +28,18 @@ export class NewsEntity {
   @Column({ type: 'jsonb', default: {} })
   impactPercents: Record<string, number>;
 
+  @Column({ type: 'enum', enum: ['event', 'recap'], default: 'event' })
+  newsType: 'event' | 'recap';
+
+  @Column({ type: 'jsonb', default: {} })
+  referencePrices: Record<string, number>;
+
+  @Column({ type: 'uuid', nullable: true })
+  sourceNewsId: string | null;
+
+  @Column({ type: 'int', default: 0 })
+  publishedCycle: number;
+
   @Column('uuid')
   seasonId: string;
 

@@ -59,7 +59,7 @@ export default function PortfolioPage() {
         <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-6">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-[var(--text-muted)]">Total Assets</div>
+              <div className="text-sm text-[var(--text-muted)]">总资产</div>
               <div className="text-3xl font-bold font-mono tabular-nums mt-1">{formatCurrency(account.totalAssets)}</div>
               <div className={cn('text-sm font-mono mt-1', account.totalPnl >= 0 ? 'text-up' : 'text-down')}>
                 {account.totalPnl >= 0 ? '+' : ''}{formatCurrency(account.totalPnl)} ({formatPercent(account.returnRate)})
@@ -68,16 +68,16 @@ export default function PortfolioPage() {
             <TierBadge tier={getTier(account.returnRate) as any} size="lg" />
           </div>
           <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-[var(--border-color)]">
-            <div><div className="text-xs text-[var(--text-muted)]">Cash</div><div className="text-sm font-mono mt-0.5">{formatCurrency(account.availableCash)}</div></div>
-            <div><div className="text-xs text-[var(--text-muted)]">Frozen</div><div className="text-sm font-mono mt-0.5">{formatCurrency(account.frozenCash)}</div></div>
-            <div><div className="text-xs text-[var(--text-muted)]">Stocks</div><div className="text-sm font-mono mt-0.5">{formatCurrency(account.marketValue)}</div></div>
+            <div><div className="text-xs text-[var(--text-muted)]">可用现金</div><div className="text-sm font-mono mt-0.5">{formatCurrency(account.availableCash)}</div></div>
+            <div><div className="text-xs text-[var(--text-muted)]">冻结资金</div><div className="text-sm font-mono mt-0.5">{formatCurrency(account.frozenCash)}</div></div>
+            <div><div className="text-xs text-[var(--text-muted)]">股票市值</div><div className="text-sm font-mono mt-0.5">{formatCurrency(account.marketValue)}</div></div>
           </div>
         </div>
       )}
 
       {/* Tabs */}
       <div className="flex gap-4 border-b border-[var(--border-color)]">
-        {([['holdings', 'Holdings'], ['pending', `Pending (${activeOrders.length})`], ['history', 'History']] as const).map(([key, label]) => (
+        {([['holdings', '持仓'], ['pending', `未成交 (${activeOrders.length})`], ['history', '成交记录']] as const).map(([key, label]) => (
           <button key={key} onClick={() => setTab(key as any)}
             className={cn('pb-2 text-sm font-medium border-b-2 -mb-px', tab === key ? 'border-accent-primary text-[var(--text-primary)]' : 'border-transparent text-[var(--text-muted)]')}>
             {label}
@@ -87,13 +87,13 @@ export default function PortfolioPage() {
 
       {tab === 'holdings' && (
         <div className="space-y-3">
-          {positions.length === 0 && <p className="text-sm text-[var(--text-muted)] py-8 text-center">No holdings yet. Start trading!</p>}
+          {positions.length === 0 && <p className="text-sm text-[var(--text-muted)] py-8 text-center">你还没有持仓，先去买一只股票。</p>}
           {positions.map(p => (
             <Link key={p.id} href={`/stock/${p.stockId}`}
               className="flex items-center justify-between rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-4 hover:bg-[var(--bg-hover)]">
               <div>
                 <div className="font-medium">{p.stockSymbol}</div>
-                <div className="text-xs text-[var(--text-muted)]">{p.quantity} shares · Avg {formatCurrency(p.avgCost)}</div>
+                <div className="text-xs text-[var(--text-muted)]">{p.quantity} 股 · 均价 {formatCurrency(p.avgCost)}</div>
               </div>
               <div className="text-right">
                 <div className="font-mono text-sm">{formatCurrency(p.marketValue)}</div>
@@ -108,16 +108,16 @@ export default function PortfolioPage() {
 
       {tab === 'pending' && (
         <div className="space-y-3">
-          {activeOrders.length === 0 && <p className="text-sm text-[var(--text-muted)] py-8 text-center">No pending orders</p>}
+          {activeOrders.length === 0 && <p className="text-sm text-[var(--text-muted)] py-8 text-center">当前没有未成交委托</p>}
           {activeOrders.map(o => (
             <div key={o.id} className="flex items-center justify-between rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-4">
               <div>
                 <span className={cn('text-xs font-medium rounded px-1.5 py-0.5 mr-2', o.side === 'buy' ? 'bg-up/10 text-up' : 'bg-down/10 text-down')}>
-                  {o.side.toUpperCase()}
+                  {o.side === 'buy' ? '买入' : '卖出'}
                 </span>
-                <span className="text-sm">Limit @ {formatCurrency(o.price)} × {o.quantity}</span>
+                <span className="text-sm">限价 {formatCurrency(o.price)} × {o.quantity} 股</span>
               </div>
-              <button onClick={() => cancelOrder(o.id)} className="text-xs text-red-400 hover:text-red-300">Cancel</button>
+              <button onClick={() => cancelOrder(o.id)} className="text-xs text-red-400 hover:text-red-300">撤单</button>
             </div>
           ))}
         </div>
@@ -125,20 +125,26 @@ export default function PortfolioPage() {
 
       {tab === 'history' && (
         <div className="space-y-2">
-          {orders.filter(o => o.status !== 'pending').length === 0 && <p className="text-sm text-[var(--text-muted)] py-8 text-center">No trade history</p>}
+          {orders.filter(o => o.status !== 'pending').length === 0 && <p className="text-sm text-[var(--text-muted)] py-8 text-center">暂无成交记录</p>}
           {orders.filter(o => o.status !== 'pending').map(o => (
             <div key={o.id} className="flex items-center justify-between rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-sm">
               <div className="flex items-center gap-2">
                 <span className={cn('text-xs font-medium rounded px-1.5 py-0.5', o.side === 'buy' ? 'bg-up/10 text-up' : 'bg-down/10 text-down')}>
-                  {o.side.toUpperCase()}
+                  {o.side === 'buy' ? '买入' : '卖出'}
                 </span>
-                <span className="font-mono">{o.quantity} @ {formatCurrency(o.filledPrice || o.price)}</span>
+                <span className="font-mono">{o.quantity} 股 @ {formatCurrency(o.filledPrice || o.price)}</span>
               </div>
-              <span className={cn('text-xs', o.status === 'filled' ? 'text-green-400' : 'text-[var(--text-muted)]')}>{o.status}</span>
+              <span className={cn('text-xs', o.status === 'filled' ? 'text-green-400' : 'text-[var(--text-muted)]')}>{getOrderStatusLabel(o.status)}</span>
             </div>
           ))}
         </div>
       )}
     </div>
   );
+}
+
+function getOrderStatusLabel(status: string) {
+  if (status === 'filled') return '已成交';
+  if (status === 'cancelled') return '已撤销';
+  return '处理中';
 }

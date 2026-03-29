@@ -15,16 +15,20 @@ export class KLineService {
     private readonly redis: RedisService,
   ) {}
 
-  async getKLines(stockId: string, limit = 100): Promise<KLineBar[]> {
-    const cached = await this.redis.get(`kline:${stockId}:${limit}`);
+  async getKLines(stockId: string, limit = 100, resolution = '1m'): Promise<KLineBar[]> {
+    const cached = await this.redis.get(`kline:${stockId}:${resolution}:${limit}`);
     if (cached) return JSON.parse(cached);
 
-    const ticks = await this.tickRepo.find({ where: { stockId }, order: { timestamp: 'DESC' }, take: limit * 30 });
+    let barSize = 10;
+    if (resolution === '1d') barSize = 45;
+    if (resolution === '1w') barSize = 225;
+    if (resolution === '1M') barSize = 900;
+
+    const ticks = await this.tickRepo.find({ where: { stockId }, order: { timestamp: 'DESC' }, take: limit * barSize });
     if (ticks.length === 0) return [];
     ticks.reverse();
 
     const bars: KLineBar[] = [];
-    const barSize = 30;
     for (let i = 0; i < ticks.length; i += barSize) {
       const chunk = ticks.slice(i, i + barSize);
       if (chunk.length === 0) continue;
@@ -38,7 +42,7 @@ export class KLineService {
     }
 
     const result = bars.slice(-limit);
-    await this.redis.set(`kline:${stockId}:${limit}`, JSON.stringify(result), 5);
+    await this.redis.set(`kline:${stockId}:${resolution}:${limit}`, JSON.stringify(result), 5);
     return result;
   }
 }

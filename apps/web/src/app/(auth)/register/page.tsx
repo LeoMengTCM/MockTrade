@@ -7,19 +7,18 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { api } from '@/lib/api';
+import { translateApiErrorMessage } from '@/lib/api-error';
 import { useAuthStore } from '@/stores/auth-store';
-
-const PRESET_AVATARS = [
-  '/avatars/1.svg', '/avatars/2.svg', '/avatars/3.svg', '/avatars/4.svg',
-  '/avatars/5.svg', '/avatars/6.svg', '/avatars/7.svg', '/avatars/8.svg',
-];
+import { ImageUploader } from '@/components/shared/ImageUploader';
+import { UserPlus, ArrowRight } from 'lucide-react';
 
 const schema = z.object({
-  email: z.string().email('Invalid email'),
-  password: z.string().min(8, 'At least 8 characters'),
+  email: z.string().email('请输入正确的邮箱地址'),
+  password: z.string().min(8, '密码至少需要 8 位'),
   confirmPassword: z.string(),
-  username: z.string().min(2, 'At least 2 characters').max(20, 'Max 20 characters'),
-}).refine(d => d.password === d.confirmPassword, { message: 'Passwords do not match', path: ['confirmPassword'] });
+  username: z.string().min(2, '用户名至少 2 个字符').max(20, '用户名最多 20 个字符'),
+  avatarUrl: z.string().min(1, '请上传你的专属头像'),
+}).refine(d => d.password === d.confirmPassword, { message: '两次输入的密码不一致', path: ['confirmPassword'] });
 
 type FormData = z.infer<typeof schema>;
 
@@ -27,66 +26,128 @@ export default function RegisterPage() {
   const router = useRouter();
   const { setAuth } = useAuthStore();
   const [error, setError] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState(PRESET_AVATARS[0]);
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({ resolver: zodResolver(schema) });
+  const { register, handleSubmit, setValue, trigger, formState: { errors, isSubmitting } } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      avatarUrl: ''
+    }
+  });
 
   const onSubmit = async (data: FormData) => {
     try {
       setError('');
-      const res = await api.post('/auth/register', { email: data.email, password: data.password, username: data.username, avatarUrl });
+      const res = await api.post('/auth/register', {
+        email: data.email,
+        password: data.password,
+        username: data.username,
+        avatarUrl: data.avatarUrl,
+      });
       setAuth(res.data.user, res.data.token);
       router.push('/');
     } catch (e: any) {
-      setError(e.response?.data?.message || 'Registration failed');
+      const message = Array.isArray(e.response?.data?.message) ? e.response.data.message[0] : e.response?.data?.message;
+      setError(translateApiErrorMessage(message, '注册失败，请稍后重试'));
     }
   };
 
+  const handleAvatarUpload = (url: string) => {
+    setValue('avatarUrl', url);
+    trigger('avatarUrl'); // 主动消除 Zod 的错误提示
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--bg-primary)] px-4">
-      <div className="w-full max-w-md space-y-8">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[var(--bg-primary)] px-4">
+      {/* Background Decorative Bloom */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-accent-primary/5 blur-[120px] rounded-full pointer-events-none" />
+
+      <div className="z-10 w-full max-w-md space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">MockTrade</h1>
-          <p className="mt-2 text-[var(--text-secondary)]">Join the Market</p>
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-primary/10 text-accent-primary shadow-soft mb-4">
+            <UserPlus size={28} />
+          </div>
+          <h1 className="text-3xl font-semibold tracking-tight">注册账号</h1>
+          <p className="mt-2 text-[var(--text-secondary)]">创建账号后就可以开始交易</p>
         </div>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-6">
-          <h2 className="text-xl font-semibold">Create Account</h2>
-          {error && <div className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400">{error}</div>}
-          <div>
-            <label className="block text-sm text-[var(--text-secondary)] mb-1">Email</label>
-            <input {...register('email')} type="email" className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] px-3 py-2 text-sm outline-none focus:border-accent-primary" />
-            {errors.email && <p className="mt-1 text-xs text-red-400">{errors.email.message}</p>}
+
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-5 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-secondary)]/80 backdrop-blur-xl p-8 shadow-soft"
+        >
+          {error && (
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-400">
+              {error}
+            </div>
+          )}
+
+          {/* 头像上传核心模块 */}
+          <div className="flex flex-col items-center justify-center pt-2 pb-4">
+            <ImageUploader onUploadSuccess={handleAvatarUpload} />
+            {/* hidden field is needed for react-hook-form to register properly although we set value via setValue */}
+            <input type="hidden" {...register('avatarUrl')} />
+            {errors.avatarUrl && <p className="mt-2 text-xs font-semibold text-red-400">{errors.avatarUrl.message}</p>}
           </div>
-          <div>
-            <label className="block text-sm text-[var(--text-secondary)] mb-1">Password</label>
-            <input {...register('password')} type="password" className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] px-3 py-2 text-sm outline-none focus:border-accent-primary" />
-            {errors.password && <p className="mt-1 text-xs text-red-400">{errors.password.message}</p>}
-          </div>
-          <div>
-            <label className="block text-sm text-[var(--text-secondary)] mb-1">Confirm Password</label>
-            <input {...register('confirmPassword')} type="password" className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] px-3 py-2 text-sm outline-none focus:border-accent-primary" />
-            {errors.confirmPassword && <p className="mt-1 text-xs text-red-400">{errors.confirmPassword.message}</p>}
-          </div>
-          <div>
-            <label className="block text-sm text-[var(--text-secondary)] mb-1">Username</label>
-            <input {...register('username')} className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] px-3 py-2 text-sm outline-none focus:border-accent-primary" />
-            {errors.username && <p className="mt-1 text-xs text-red-400">{errors.username.message}</p>}
-          </div>
-          <div>
-            <label className="block text-sm text-[var(--text-secondary)] mb-2">Avatar</label>
-            <div className="flex flex-wrap gap-2">
-              {PRESET_AVATARS.map((url, i) => (
-                <button key={i} type="button" onClick={() => setAvatarUrl(url)}
-                  className={`h-10 w-10 rounded-full bg-accent-primary/20 flex items-center justify-center text-sm font-bold border-2 ${avatarUrl === url ? 'border-accent-primary' : 'border-transparent'}`}>
-                  {i + 1}
-                </button>
-              ))}
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5 ml-1">邮箱</label>
+              <input
+                {...register('email')}
+                type="email"
+                placeholder="you@example.com"
+                className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)]/50 px-4 py-3 text-sm outline-none transition-all placeholder:text-[var(--text-muted)] focus:border-accent-primary focus:bg-[var(--bg-primary)] focus:ring-4 focus:ring-accent-primary/10"
+              />
+              {errors.email && <p className="mt-1.5 ml-1 text-xs font-medium text-red-500">{errors.email.message}</p>}
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5 ml-1">昵称</label>
+              <input
+                {...register('username')}
+                placeholder="例如：狂奔的韭菜"
+                className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)]/50 px-4 py-3 text-sm outline-none transition-all placeholder:text-[var(--text-muted)] focus:border-accent-primary focus:bg-[var(--bg-primary)] focus:ring-4 focus:ring-accent-primary/10"
+              />
+              {errors.username && <p className="mt-1.5 ml-1 text-xs font-medium text-red-500">{errors.username.message}</p>}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5 ml-1">密码</label>
+                <input
+                  {...register('password')}
+                  type="password"
+                  className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)]/50 px-4 py-3 text-sm outline-none transition-all focus:border-accent-primary focus:bg-[var(--bg-primary)] focus:ring-4 focus:ring-accent-primary/10"
+                />
+                {errors.password && <p className="mt-1.5 ml-1 text-xs font-medium text-red-500">{errors.password.message}</p>}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5 ml-1">确认密码</label>
+                <input
+                  {...register('confirmPassword')}
+                  type="password"
+                  className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)]/50 px-4 py-3 text-sm outline-none transition-all focus:border-accent-primary focus:bg-[var(--bg-primary)] focus:ring-4 focus:ring-accent-primary/10"
+                />
+                {errors.confirmPassword && <p className="mt-1.5 ml-1 text-xs font-medium text-red-500">{errors.confirmPassword.message}</p>}
+              </div>
             </div>
           </div>
-          <button type="submit" disabled={isSubmitting} className="w-full rounded-lg bg-accent-primary py-2.5 text-sm font-medium text-white hover:bg-accent-primary/80 disabled:opacity-50">
-            {isSubmitting ? 'Creating...' : 'Create Account'}
-          </button>
-          <p className="text-center text-sm text-[var(--text-muted)]">
-            Already have an account? <Link href="/login" className="text-accent-primary hover:underline">Log In</Link>
+
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-accent-primary py-3.5 text-sm font-semibold text-white transition-all hover:bg-accent-primary/90 focus:ring-4 focus:ring-accent-primary/30 disabled:opacity-50"
+            >
+              {isSubmitting ? '注册中...' : '注册并进入市场'}
+              {!isSubmitting && <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />}
+            </button>
+          </div>
+
+          <p className="pt-2 text-center text-sm font-medium text-[var(--text-muted)]">
+            已经有账号？
+            <Link href="/login" className="text-accent-primary underline decoration-transparent underline-offset-4 transition-colors hover:decoration-accent-primary">
+              去登录
+            </Link>
           </p>
         </form>
       </div>
