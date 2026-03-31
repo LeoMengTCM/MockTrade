@@ -18,6 +18,7 @@
 - **2026-03-31 已完成本地源码 Docker 重新部署验证与部署文档整理**：修复 `web` 容器继承 Docker `HOSTNAME` 后绑定到随机容器名地址、导致健康检查失败的问题；同时修复 nginx 镜像把完整主配置误复制到 `conf.d/default.conf` 的打包错误。
 - 2026-03-31 当前默认源码部署已可直接使用 `docker compose up -d --build` 启动，`docker compose ps` 中 `postgres / redis / server / web / nginx` 会全部进入 `healthy`，`http://localhost:9500` 与 `http://localhost:9500/api/health` 已重新验证可用。
 - 2026-03-31 已同步整理项目文档：`README.md`、`README_EN.md` 与 `CHANGELOG.md` 已补充部署步骤、种子初始化、管理员初始化与验证命令，便于后续继续交接。
+- 2026-03-31 已修复首页卡在“正在加载市场数据...”的问题：根因不是 seed 缺失，而是本地 `.env` 中把 `NEXT_PUBLIC_API_URL / NEXT_PUBLIC_WS_URL / CORS_ORIGIN` 写成了裸 `http://localhost`，前端浏览器请求和 WebSocket 连接因此落到了错误入口；现已补上运行时 localhost 占位解析与本地端口兼容 CORS。
 - **2026-03-29 已完成赛季/头像/排行榜闭环与 v0.1.0 功能补完，当前进入新一轮行情真实性与可玩性优化。**
 - 2026-03-29 已修复新闻自动发布在服务重启后卡住的问题：Bull 调度 job ID 不再和旧 completed job 冲突，新闻会在重启后继续正常按开盘周期发布。
 - 2026-03-29 已修复赛季管理闭环：管理后台创建赛季支持具体到分钟的开始/结束时间；创建新赛季时会先结算旧赛季，再切换到新赛季。
@@ -50,6 +51,11 @@
 ## 2026-03-31 Docker 重新部署与文档整理
 
 ### 已完成
+- [x] 修复首页长时间停在“正在加载市场数据...”
+  - 已确认不是数据库没种上：`/api/market/stocks` 可返回 25 只股票，`/api/market/status` 也能正常返回市场状态与阶段。
+  - 根因是本地 `.env` 中的 `NEXT_PUBLIC_API_URL`、`NEXT_PUBLIC_WS_URL` 与 `CORS_ORIGIN` 使用了裸 `http://localhost`，浏览器端在 `http://localhost:9500` 入口下会把请求打到错误的默认地址。
+  - 前端已新增运行时基址解析：本地若检测到无端口的 localhost 配置，会按当前浏览器入口自动解析为同源 `:9500`，开发场景 `:3000` 会自动映射到 `:3001`，直连 `:9510` 会自动映射到 `:9511`。
+  - 后端 HTTP CORS 与 WebSocket CORS 现统一支持 localhost 协议匹配，`CORS_ORIGIN=http://localhost` 也允许 `http://localhost:9500` 这类本地入口。
 - [x] 修复源码 Docker 部署时 `web` 健康检查不通过
   - 根因是 Next standalone 会读取容器内的 `HOSTNAME` 环境变量；Docker 默认把它注入为容器 ID，导致服务监听到随机主机名地址而不是回环地址。
   - 现已在 `docker-compose.yml` 与 `docker-compose.dockerhub.yml` 中显式为 `web` 设置 `HOSTNAME=0.0.0.0`。
@@ -65,6 +71,9 @@
 - [x] `docker compose ps` 显示 `postgres / redis / server / web / nginx` 全部为 `healthy`
 - [x] `curl -I http://localhost:9500` 返回 `HTTP/1.1 200 OK`
 - [x] `curl http://localhost:9500/api/health` 返回 `{"redis":"ok","database":"ok","status":"healthy"}`
+- [x] `curl http://localhost:9500/api/market/stocks | jq 'length'` 返回 `25`
+- [x] `curl http://localhost:9500/api/market/status` 正常返回 `status / countdown / regime`
+- [x] 直连 `http://localhost:9511` 并带 `Origin: http://localhost:9500` 请求时，响应头已包含 `Access-Control-Allow-Origin: http://localhost:9500`
 
 ## 2026-03-29 新闻自动发布修复
 

@@ -1,16 +1,8 @@
 import axios from 'axios';
+import { resolveRuntimeBaseUrl } from './runtime-base-url';
 
 function getApiBaseUrl() {
-  const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
-  if (configured) {
-    return configured.replace(/\/$/, '');
-  }
-
-  if (typeof window !== 'undefined') {
-    return window.location.origin;
-  }
-
-  return 'http://localhost:3001';
+  return resolveRuntimeBaseUrl(process.env.NEXT_PUBLIC_API_URL, 'http://localhost:3001');
 }
 
 export const api = axios.create({

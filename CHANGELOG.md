@@ -5,15 +5,13 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 ### Deployment
-- Fixed source-build Docker deployment so the `web` container explicitly binds Next standalone to `0.0.0.0` instead of inheriting the container hostname
-- Changed `web` and `nginx` health checks from `localhost` to `127.0.0.1` to avoid loopback resolution issues inside Alpine containers
-- Fixed nginx image packaging by copying the full top-level config to `/etc/nginx/nginx.conf` instead of `conf.d/default.conf`
-- Re-verified local deployment with `docker compose up -d --build`, `docker compose ps`, `curl -I http://localhost:9500`, and `curl http://localhost:9500/api/health`
+- Fixed local Docker homepage loading regressions when `.env` uses bare `http://localhost` for `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_WS_URL`; the frontend now resolves those placeholder values against the active browser origin at runtime
+- Added localhost-port-aware CORS matching for both HTTP and WebSocket traffic, so `CORS_ORIGIN=http://localhost` still allows local entrypoints such as `http://localhost:9500`
+- Added `HOSTNAME=0.0.0.0` to the web runtime path used by Docker builds and Docker Hub compose, preventing Next standalone from binding to an internal container hostname
 
 ### Documentation
-- Refreshed `README.md` and `README_EN.md` with a documentation map, seed/bootstrap instructions, admin bootstrap notes, and post-deploy verification commands
-- Synced project docs with the current default entrypoint (`http://localhost:9500`) and the latest verified deployment flow
-- Added the latest deployment-fix note to `docs/progress.md` for future handoff continuity
+- Restored the README deployment map, seed/bootstrap commands, admin bootstrap notes, and post-deploy verification commands in both Chinese and English
+- Documented the recommended same-origin frontend env setup for nginx entrypoints and noted the local localhost placeholder fallback behavior
 
 ## [0.1.2] - 2026-03-31
 

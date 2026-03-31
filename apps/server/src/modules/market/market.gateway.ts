@@ -6,9 +6,10 @@ import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
 import { WsEvent, MarketStatus } from '@mocktrade/shared';
 import { MarketStateService } from './market-state.service';
+import { createCorsOriginMatcher } from '../../cors-origin';
 
 @WebSocketGateway({
-  cors: { origin: process.env.CORS_ORIGIN || 'http://localhost:3000', credentials: true },
+  cors: { origin: createCorsOriginMatcher(process.env.CORS_ORIGIN), credentials: true },
   namespace: '/',
 })
 export class MarketGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {

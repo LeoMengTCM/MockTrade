@@ -120,6 +120,7 @@ curl http://localhost:9500/api/health
 - 这套源码部署当前已经验证通过：`postgres / redis / server / web / nginx` 会全部进入 `healthy`。
 - `web` 容器默认通过 `127.0.0.1:3000` 做健康检查，并显式绑定 `0.0.0.0`，避免 Next standalone 在容器内错误绑定到随机主机名。
 - `nginx` 镜像会直接使用仓库中的完整 [`docker/nginx/nginx.conf`](docker/nginx/nginx.conf) 作为主配置文件，`/api`、`/socket.io/` 与 `/uploads/` 都会统一转发。
+- 如果整站从 `http://localhost:9500` 进入，推荐把 `NEXT_PUBLIC_API_URL` 与 `NEXT_PUBLIC_WS_URL` 留空；当前版本即使本地误填成 `http://localhost`，也会在浏览器里自动按当前入口地址解析，避免首页卡在“正在加载市场数据...”。
 
 ### Docker Hub 拉取部署（推荐 VPS 使用）
 

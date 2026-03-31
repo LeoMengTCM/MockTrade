@@ -90,7 +90,7 @@ cp .env.production.example .env
 # Start all services
 docker compose up -d --build
 
-# Seed stock data on a fresh DB
+# Seed stock data on first boot
 docker compose exec server node dist/database/seeds/run-seed.js
 
 # Verify
@@ -120,6 +120,7 @@ Notes:
 - This source-build deployment path has been verified end-to-end: `postgres / redis / server / web / nginx` all reach `healthy`.
 - The `web` container now health-checks `127.0.0.1:3000` and explicitly binds to `0.0.0.0`, avoiding the common Next standalone issue where it inherits a random container hostname.
 - The nginx image now ships the full [`docker/nginx/nginx.conf`](docker/nginx/nginx.conf) as its main config, so `/api`, `/socket.io/`, and `/uploads/` are routed consistently.
+- If the whole app is accessed from `http://localhost:9500`, the recommended setup is to leave `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` empty. The current build also treats bare local values like `http://localhost` as placeholders and resolves them against the active browser origin, so the homepage does not get stuck on the market loading state.
 
 ### Docker Hub Pull-Based Deployment (Recommended for VPS)
 

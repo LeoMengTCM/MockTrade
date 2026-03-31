@@ -1,18 +1,10 @@
 'use client';
 
 import { io, Socket } from 'socket.io-client';
+import { resolveRuntimeBaseUrl } from './runtime-base-url';
 
 function getWsUrl() {
-  const configured = process.env.NEXT_PUBLIC_WS_URL?.trim();
-  if (configured) {
-    return configured.replace(/\/$/, '');
-  }
-
-  if (typeof window !== 'undefined') {
-    return window.location.origin;
-  }
-
-  return 'http://localhost:3001';
+  return resolveRuntimeBaseUrl(process.env.NEXT_PUBLIC_WS_URL, 'http://localhost:3001');
 }
 
 let socket: Socket | null = null;
