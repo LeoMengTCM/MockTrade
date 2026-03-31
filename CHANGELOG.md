@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Deployment
+- Fixed source-build Docker deployment so the `web` container explicitly binds Next standalone to `0.0.0.0` instead of inheriting the container hostname
+- Changed `web` and `nginx` health checks from `localhost` to `127.0.0.1` to avoid loopback resolution issues inside Alpine containers
+- Fixed nginx image packaging by copying the full top-level config to `/etc/nginx/nginx.conf` instead of `conf.d/default.conf`
+- Re-verified local deployment with `docker compose up -d --build`, `docker compose ps`, `curl -I http://localhost:9500`, and `curl http://localhost:9500/api/health`
+
+### Documentation
+- Refreshed `README.md` and `README_EN.md` with a documentation map, seed/bootstrap instructions, admin bootstrap notes, and post-deploy verification commands
+- Synced project docs with the current default entrypoint (`http://localhost:9500`) and the latest verified deployment flow
+- Added the latest deployment-fix note to `docs/progress.md` for future handoff continuity
+
 ## [0.1.2] - 2026-03-31
 
 ### Security

@@ -2,6 +2,16 @@
 
 An AI-driven virtual stock trading simulator. Players trade 25 virtual stocks in a simulated market, making decisions based on AI-generated news to compete for seasonal rankings.
 
+> Current status (2026-03-31): both source-build Docker Compose and Docker Hub image deployments have been documented and verified. The default entrypoint is `http://localhost:9500`, and the health endpoint is `http://localhost:9500/api/health`.
+
+## 📚 Documentation Map
+
+- [`docs/progress.md`](docs/progress.md): development progress, phase summaries, and recent fixes
+- [`docs/handoff-2026-03-28-latest.md`](docs/handoff-2026-03-28-latest.md): detailed handoff notes and latest verification results
+- [`docs/wbs-plan.md`](docs/wbs-plan.md): full WBS and scope breakdown
+- [`docs/ui-design.md`](docs/ui-design.md): frontend visual and interaction specification
+- [`CLAUDE.md`](CLAUDE.md): project conventions, architecture summary, and common commands
+
 ## ✨ Key Features
 
 - **AI-Powered News Engine** — Uses OpenAI / Claude to generate market news that dynamically impacts stock prices
@@ -64,6 +74,9 @@ pnpm dev
 # Or run individually
 pnpm dev:server   # Backend: http://localhost:3001
 pnpm dev:web      # Frontend: http://localhost:3000
+
+# Seed stock data on a fresh DB
+pnpm seed
 ```
 
 > Local development connects directly to `localhost:3001` (backend) / `localhost:3000` (frontend), without nginx.
@@ -77,9 +90,20 @@ cp .env.production.example .env
 # Start all services
 docker compose up -d --build
 
-# Open (default port 9500)
-open http://localhost:9500
+# Seed stock data on a fresh DB
+docker compose exec server node dist/database/seeds/run-seed.js
+
+# Verify
+docker compose ps
+curl http://localhost:9500/api/health
 ```
+
+Entrypoints:
+
+- App: `http://localhost:9500`
+- Health: `http://localhost:9500/api/health`
+- Frontend direct debug: `http://localhost:9510`
+- Backend direct debug: `http://localhost:9511/api/health`
 
 > Default port mapping (override via `.env`):
 >
@@ -90,6 +114,12 @@ open http://localhost:9500
 > | server (NestJS) | 9511 | `SERVER_PORT` |
 > | PostgreSQL | 9532 | `POSTGRES_PORT` |
 > | Redis | 9579 | `REDIS_PORT` |
+
+Notes:
+
+- This source-build deployment path has been verified end-to-end: `postgres / redis / server / web / nginx` all reach `healthy`.
+- The `web` container now health-checks `127.0.0.1:3000` and explicitly binds to `0.0.0.0`, avoiding the common Next standalone issue where it inherits a random container hostname.
+- The nginx image now ships the full [`docker/nginx/nginx.conf`](docker/nginx/nginx.conf) as its main config, so `/api`, `/socket.io/`, and `/uploads/` are routed consistently.
 
 ### Docker Hub Pull-Based Deployment (Recommended for VPS)
 
@@ -113,6 +143,10 @@ docker compose -f docker-compose.dockerhub.yml up -d
 
 # 4) Seed data on first boot
 docker compose -f docker-compose.dockerhub.yml exec server node dist/database/seeds/run-seed.js
+
+# 5) Verify
+docker compose -f docker-compose.dockerhub.yml ps
+curl http://localhost:9500/api/health
 ```
 
 Notes:
@@ -203,6 +237,30 @@ If you have modified the code and wish to push new images to Docker Hub, this pr
 | `MOCKTRADE_SERVER_IMAGE` | Optional | Backend image reference, defaults to `drleomeng/mocktrade-server:v0.1.1` |
 | `MOCKTRADE_WEB_IMAGE` | Optional | Frontend image reference, defaults to `drleomeng/mocktrade-web:v0.1.1` |
 | `MOCKTRADE_NGINX_IMAGE` | Optional | nginx image reference, defaults to `drleomeng/mocktrade-nginx:v0.1.1` |
+
+## 👤 Admin Bootstrap
+
+- During registration, if the user email exactly matches `ADMIN_EMAIL` in `.env`, that account is created with the `admin` role.
+- Recommended flow: set `ADMIN_EMAIL` first, then register that account through the app.
+- After registration, the top-right user menu will expose the `/admin` entry.
+
+## ✅ Recommended Verification Commands
+
+After a source-build Docker deployment, run at least this set:
+
+```bash
+docker compose ps
+curl http://localhost:9500/api/health
+curl http://localhost:9500/api/market/status
+curl -I http://localhost:9500
+```
+
+Expected results:
+
+- all 5 services show `healthy` in `docker compose ps`
+- `/api/health` returns `{"redis":"ok","database":"ok","status":"healthy"}`
+- `/api/market/status` returns market status plus countdown metadata
+- homepage responds with `HTTP/1.1 200 OK`
 
 ## 📋 Feature Overview
 

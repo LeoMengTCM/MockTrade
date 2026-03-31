@@ -1,6 +1,6 @@
 # MockTrade 开发进度
 
-> 最后更新: 2026-03-29
+> 最后更新: 2026-03-31
 
 ## 总览
 
@@ -15,6 +15,9 @@
 
 当前状态:
 - 核心 WBS 任务 198/198 已完成，项目已进入修复与体验增强阶段。
+- **2026-03-31 已完成本地源码 Docker 重新部署验证与部署文档整理**：修复 `web` 容器继承 Docker `HOSTNAME` 后绑定到随机容器名地址、导致健康检查失败的问题；同时修复 nginx 镜像把完整主配置误复制到 `conf.d/default.conf` 的打包错误。
+- 2026-03-31 当前默认源码部署已可直接使用 `docker compose up -d --build` 启动，`docker compose ps` 中 `postgres / redis / server / web / nginx` 会全部进入 `healthy`，`http://localhost:9500` 与 `http://localhost:9500/api/health` 已重新验证可用。
+- 2026-03-31 已同步整理项目文档：`README.md`、`README_EN.md` 与 `CHANGELOG.md` 已补充部署步骤、种子初始化、管理员初始化与验证命令，便于后续继续交接。
 - **2026-03-29 已完成赛季/头像/排行榜闭环与 v0.1.0 功能补完，当前进入新一轮行情真实性与可玩性优化。**
 - 2026-03-29 已修复新闻自动发布在服务重启后卡住的问题：Bull 调度 job ID 不再和旧 completed job 冲突，新闻会在重启后继续正常按开盘周期发布。
 - 2026-03-29 已修复赛季管理闭环：管理后台创建赛季支持具体到分钟的开始/结束时间；创建新赛季时会先结算旧赛季，再切换到新赛季。
@@ -43,6 +46,25 @@
 - 2026-03-28 **真实身份链路**：抛弃旧有的默认干瘪头像，实现基于后台 Multer + ServeStatic 的真实图片上传与静态托管，前端同步构建并植入注册中心的 `<ImageUploader>` 互动圆环。
 - 2026-03-28 **分时线重构**：打通当天涨跌横轴限界，令 `StockChart` 可一次性拉取并饱满铺设当前季度的微缩分时面积，实现极强的操盘沉浸感。
 - 当前最核心待办转为：补后台可调参数 / 观测能力，并补行情行为的回归测试。
+
+## 2026-03-31 Docker 重新部署与文档整理
+
+### 已完成
+- [x] 修复源码 Docker 部署时 `web` 健康检查不通过
+  - 根因是 Next standalone 会读取容器内的 `HOSTNAME` 环境变量；Docker 默认把它注入为容器 ID，导致服务监听到随机主机名地址而不是回环地址。
+  - 现已在 `docker-compose.yml` 与 `docker-compose.dockerhub.yml` 中显式为 `web` 设置 `HOSTNAME=0.0.0.0`。
+  - `web` 健康检查也已改成探测 `127.0.0.1:3000`，避免 Alpine 容器里 `localhost` 走到 IPv6 回环导致的误判。
+- [x] 修复 nginx 镜像配置复制位置错误
+  - `docker/nginx/nginx.conf` 是完整的顶层 nginx 主配置，之前却被复制到 `/etc/nginx/conf.d/default.conf`，会在启动时报 `worker_processes directive is not allowed here`。
+  - 现已改为复制到 `/etc/nginx/nginx.conf`，并将 nginx 健康检查统一改为 `127.0.0.1:80`。
+- [x] 完成 README / README_EN / CHANGELOG 文档同步
+  - 增加文档索引、源码部署与 Docker Hub 部署后的验证命令、fresh DB 的种子初始化步骤，以及 `ADMIN_EMAIL` 对应管理员账号的说明。
+
+### 验证结果
+- [x] `docker compose up -d --build`
+- [x] `docker compose ps` 显示 `postgres / redis / server / web / nginx` 全部为 `healthy`
+- [x] `curl -I http://localhost:9500` 返回 `HTTP/1.1 200 OK`
+- [x] `curl http://localhost:9500/api/health` 返回 `{"redis":"ok","database":"ok","status":"healthy"}`
 
 ## 2026-03-29 新闻自动发布修复
 

@@ -2,10 +2,20 @@
 
 一款基于 AI 驱动新闻的虚拟股票交易模拟平台。玩家在仿真市场中买卖 25 只虚拟股票，通过阅读 AI 生成的新闻做出交易决策，争夺赛季排名。
 
+> 当前状态（2026-03-31）：源码 Docker Compose 与 Docker Hub 拉镜像两种部署方式都已整理并验证。默认入口为 `http://localhost:9500`，健康检查接口为 `http://localhost:9500/api/health`。
+
+## 📚 文档索引
+
+- [`docs/progress.md`](docs/progress.md)：开发进度、阶段总结、最近修复记录
+- [`docs/handoff-2026-03-28-latest.md`](docs/handoff-2026-03-28-latest.md)：详细交接文档与最近验证结果
+- [`docs/wbs-plan.md`](docs/wbs-plan.md)：完整 WBS 与范围拆解
+- [`docs/ui-design.md`](docs/ui-design.md)：前端视觉与交互规范
+- [`CLAUDE.md`](CLAUDE.md)：项目开发约束、架构摘要与常用命令
+
 ## ✨ 核心特色
 
 - **AI 驱动新闻引擎** — 使用 OpenAI / Claude 生成市场新闻，新闻发布后自动影响股价走势
-- **实时行情系统** — WebSocket 推送价格变动，K 线图支持 `逐笔 / 1分 / 5分 / 15分`
+- **实时行情系统** — WebSocket 推送价格变动，K 线图支持 `逐跳 / 1分 / 5分 / 15分`
 - **国内炒股平台风格图表** — 分时图双色面积（昨收线上下分色）+ 均价线，K 线带 MA5/MA20
 - **完整交易闭环** — 市价单即时成交、限价单自动撮合、手续费与持仓管理
 - **赛季制竞技** — 独立排行榜，支持资产与收益率双维度排名
@@ -64,6 +74,9 @@ pnpm dev
 # 分别启动
 pnpm dev:server   # 后端：http://localhost:3001
 pnpm dev:web      # 前端：http://localhost:3000
+
+# 首次初始化股票种子（fresh DB 需要）
+pnpm seed
 ```
 
 > 本地开发直连 `localhost:3001` (后端) / `localhost:3000` (前端)，不走 nginx。
@@ -77,9 +90,20 @@ cp .env.production.example .env
 # 启动全部服务
 docker compose up -d --build
 
-# 访问（默认端口 9500）
-open http://localhost:9500
+# 首次初始化股票种子（fresh DB 需要）
+docker compose exec server node dist/database/seeds/run-seed.js
+
+# 验证
+docker compose ps
+curl http://localhost:9500/api/health
 ```
+
+访问入口：
+
+- 首页：`http://localhost:9500`
+- 健康检查：`http://localhost:9500/api/health`
+- 前端直连调试：`http://localhost:9510`
+- 后端直连调试：`http://localhost:9511/api/health`
 
 > 默认端口映射（可通过 `.env` 覆盖）：
 >
@@ -90,6 +114,12 @@ open http://localhost:9500
 > | server (NestJS) | 9511 | `SERVER_PORT` |
 > | PostgreSQL | 9532 | `POSTGRES_PORT` |
 > | Redis | 9579 | `REDIS_PORT` |
+
+说明：
+
+- 这套源码部署当前已经验证通过：`postgres / redis / server / web / nginx` 会全部进入 `healthy`。
+- `web` 容器默认通过 `127.0.0.1:3000` 做健康检查，并显式绑定 `0.0.0.0`，避免 Next standalone 在容器内错误绑定到随机主机名。
+- `nginx` 镜像会直接使用仓库中的完整 [`docker/nginx/nginx.conf`](docker/nginx/nginx.conf) 作为主配置文件，`/api`、`/socket.io/` 与 `/uploads/` 都会统一转发。
 
 ### Docker Hub 拉取部署（推荐 VPS 使用）
 
@@ -113,6 +143,10 @@ docker compose -f docker-compose.dockerhub.yml up -d
 
 # 4) 首次初始化种子数据
 docker compose -f docker-compose.dockerhub.yml exec server node dist/database/seeds/run-seed.js
+
+# 5) 验证
+docker compose -f docker-compose.dockerhub.yml ps
+curl http://localhost:9500/api/health
 ```
 
 说明：
@@ -203,6 +237,30 @@ sudo systemctl restart docker
 | `MOCKTRADE_SERVER_IMAGE` | 可选 | 后端镜像地址，默认 `drleomeng/mocktrade-server:v0.1.1` |
 | `MOCKTRADE_WEB_IMAGE` | 可选 | 前端镜像地址，默认 `drleomeng/mocktrade-web:v0.1.1` |
 | `MOCKTRADE_NGINX_IMAGE` | 可选 | nginx 镜像地址，默认 `drleomeng/mocktrade-nginx:v0.1.1` |
+
+## 👤 管理员初始化
+
+- 注册时，若用户邮箱与 `.env` 里的 `ADMIN_EMAIL` 完全一致，该账号会自动拿到 `admin` 角色。
+- 推荐流程：先在 `.env` 中写好 `ADMIN_EMAIL`，再访问注册页创建该账号。
+- 注册成功后，顶部用户菜单会出现“管理后台”入口，对应 `/admin`。
+
+## ✅ 推荐验收命令
+
+源码 Docker 部署完成后，至少跑一遍下面这组命令：
+
+```bash
+docker compose ps
+curl http://localhost:9500/api/health
+curl http://localhost:9500/api/market/status
+curl -I http://localhost:9500
+```
+
+预期结果：
+
+- `docker compose ps` 中 5 个服务都显示 `healthy`
+- `/api/health` 返回 `{"redis":"ok","database":"ok","status":"healthy"}`
+- `/api/market/status` 能返回市场状态与倒计时
+- 首页返回 `HTTP/1.1 200 OK`
 
 ## 📋 功能清单
 
