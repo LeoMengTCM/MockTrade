@@ -31,11 +31,17 @@ export default function PortfolioPage() {
   const [activeOrders, setActiveOrders] = useState<OrderItem[]>([]);
   const [tab, setTab] = useState<'holdings' | 'pending' | 'history'>('holdings');
 
+  const [loading, setLoading] = useState(true);
+
   const fetchData = () => {
-    api.get('/trade/account').then(r => setAccount(r.data)).catch(() => {});
-    api.get('/trade/positions').then(r => setPositions(r.data)).catch(() => {});
-    api.get('/trade/orders/active').then(r => setActiveOrders(r.data)).catch(() => {});
-    api.get('/trade/orders', { params: { limit: 50 } }).then(r => setOrders(r.data.items || [])).catch(() => {});
+    Promise.all([
+      api.get('/trade/account').then(r => setAccount(r.data)),
+      api.get('/trade/positions').then(r => setPositions(r.data)),
+      api.get('/trade/orders/active').then(r => setActiveOrders(r.data)),
+      api.get('/trade/orders', { params: { limit: 50 } }).then(r => setOrders(r.data.items || [])),
+    ])
+      .catch((e) => console.warn('[MockTrade]', e?.message || e))
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => { fetchData(); const t = setInterval(fetchData, 5000); return () => clearInterval(t); }, []);
@@ -54,8 +60,11 @@ export default function PortfolioPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 pb-12 pt-4">
+      {loading && (
+        <div className="flex items-center justify-center py-20 text-sm text-[var(--text-muted)]">正在加载持仓数据...</div>
+      )}
       {/* Account Summary Hero Card */}
-      {account && (
+      {!loading && account && (
         <div className="relative overflow-hidden rounded-[2rem] border border-[var(--border-color)] bg-[var(--bg-secondary)] px-6 py-8 shadow-sm sm:px-10">
           <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
             <div>

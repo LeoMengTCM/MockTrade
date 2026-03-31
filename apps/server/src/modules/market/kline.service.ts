@@ -21,7 +21,13 @@ export class KLineService {
     const safeLimit = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 500) : 100;
     const normalizedResolution = this.normalizeResolution(resolution);
     const cached = await this.redis.get(`kline:${stockId}:${normalizedResolution}:${safeLimit}`);
-    if (cached) return JSON.parse(cached);
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch {
+        // Corrupted cache — fall through to rebuild
+      }
+    }
 
     const result = normalizedResolution === 'tick'
       ? await this.buildTickBars(stockId, safeLimit)

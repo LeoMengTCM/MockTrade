@@ -19,10 +19,10 @@ export class AuthService {
 
   async register(dto: RegisterDto) {
     const existingEmail = await this.userRepo.findOne({ where: { email: dto.email } });
-    if (existingEmail) throw new ConflictException('Email already registered');
+    if (existingEmail) throw new ConflictException('该邮箱已注册');
 
     const existingUsername = await this.userRepo.findOne({ where: { username: dto.username } });
-    if (existingUsername) throw new ConflictException('Username already taken');
+    if (existingUsername) throw new ConflictException('该用户名已被使用');
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const adminEmail = this.config.get('ADMIN_EMAIL');
@@ -47,10 +47,10 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const user = await this.userRepo.findOne({ where: { email: dto.email } });
-    if (!user) throw new UnauthorizedException('Invalid email or password');
+    if (!user) throw new UnauthorizedException('邮箱或密码错误');
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!valid) throw new UnauthorizedException('Invalid email or password');
+    if (!valid) throw new UnauthorizedException('邮箱或密码错误');
 
     const token = this.generateToken(user);
     return {

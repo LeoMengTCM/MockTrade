@@ -28,6 +28,18 @@ export interface TrendContribution {
 export class TrendEngine {
   private readonly states = new Map<string, TrendState>();
 
+  cleanup(activeStockIds: Set<string>): void {
+    for (const stockId of this.states.keys()) {
+      if (!activeStockIds.has(stockId)) {
+        this.states.delete(stockId);
+      }
+    }
+  }
+
+  resetAll(): void {
+    this.states.clear();
+  }
+
   getContribution(params: TrendContributionParams): TrendContribution {
     const {
       stockId, currentPrice, basePrice, profile, market,

@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StockEntity } from '../../entities/stock.entity';
@@ -50,7 +50,7 @@ export class MarketController {
   @Get('stocks/:id')
   async getStockDetail(@Param('id') id: string) {
     const s = await this.stockRepo.findOne({ where: { id } });
-    if (!s) return { error: 'Stock not found' };
+    if (!s) throw new NotFoundException('股票不存在');
     return {
       id: s.id, symbol: s.symbol, name: s.name, persona: s.persona, sector: s.sector,
       basePrice: Number(s.basePrice), currentPrice: Number(s.currentPrice),

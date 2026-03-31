@@ -2,17 +2,24 @@ import {
   WebSocketGateway, WebSocketServer, OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, SubscribeMessage,
 } from '@nestjs/websockets';
 import { Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
 import { WsEvent, MarketStatus } from '@mocktrade/shared';
 import { MarketStateService } from './market-state.service';
 
-@WebSocketGateway({ cors: { origin: '*' }, namespace: '/' })
+@WebSocketGateway({
+  cors: { origin: process.env.CORS_ORIGIN || 'http://localhost:3000', credentials: true },
+  namespace: '/',
+})
 export class MarketGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
   @WebSocketServer() server: Server;
   private readonly logger = new Logger(MarketGateway.name);
   private connectedClients = 0;
 
-  constructor(private readonly marketState: MarketStateService) {}
+  constructor(
+    private readonly marketState: MarketStateService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   afterInit() {
     this.marketState.onStatusChange((status, countdown) => {
@@ -40,7 +47,25 @@ export class MarketGateway implements OnGatewayConnection, OnGatewayDisconnect, 
   handleUnsubscribeStock(client: Socket, stockId: string) { client.leave(`stock:${stockId}`); }
 
   @SubscribeMessage('subscribe:user')
-  handleSubscribeUser(client: Socket, userId: string) { client.join(`user:${userId}`); }
+  handleSubscribeUser(client: Socket, userId: string) {
+    const authUserId = this.extractUserId(client);
+    if (!authUserId || authUserId !== userId) {
+      client.emit('error', { message: '未授权：只能订阅自己的事件频道' });
+      return;
+    }
+    client.join(`user:${userId}`);
+  }
+
+  private extractUserId(client: Socket): string | null {
+    try {
+      const token = client.handshake.auth?.token;
+      if (!token) return null;
+      const payload = this.jwtService.verify(token);
+      return payload.sub || null;
+    } catch {
+      return null;
+    }
+  }
 
   broadcastTicks(ticks: Array<{ stockId: string; price: number; change: number; changePercent: number; volume: number }>) {
     this.server.to('market').emit(WsEvent.TICK, ticks);

@@ -191,8 +191,8 @@ export class AdminController {
 
   @Get('users')
   async getUsers(@Query('page') page = '1', @Query('limit') limit = '20') {
-    const p = Math.max(1, parseInt(page));
-    const l = Math.min(50, Math.max(1, parseInt(limit)));
+    const p = Math.max(1, parseInt(page, 10) || 1);
+    const l = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
     const [items, total] = await this.userRepo.findAndCount({
       select: ['id', 'email', 'username', 'avatarUrl', 'role', 'createdAt'],
       order: { createdAt: 'DESC' },

@@ -146,15 +146,15 @@ export function TradeModal({ isOpen, onClose, stockId, stockSymbol, currentPrice
             {/* Background Dimmer Close Handler */}
             <div className="absolute inset-0" onClick={onClose} />
 
-            <div className="relative w-full max-w-md bg-[var(--bg-secondary)] border border-[var(--border-color)] sm:rounded-[2rem] rounded-t-3xl shadow-soft p-5 sm:p-7 animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200">
+            <div className="relative w-full max-w-md bg-[var(--bg-secondary)] border border-[var(--border-color)] sm:rounded-[2rem] rounded-t-3xl shadow-soft p-5 sm:p-7 animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200" role="dialog" aria-modal="true" aria-labelledby="trade-modal-title">
 
                 {/* Header */}
                 <div className="flex justify-between items-center mb-5">
                     <div>
-                        <h2 className="text-xl font-bold tracking-tight">交易 {stockSymbol}</h2>
+                        <h2 id="trade-modal-title" className="text-xl font-bold tracking-tight">交易 {stockSymbol}</h2>
                         <p className="text-sm font-mono text-[var(--text-muted)] tracking-wider mt-0.5">@ {formatCurrency(currentPrice)}</p>
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-full bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white transition-colors">
+                    <button onClick={onClose} className="p-2 rounded-full bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white transition-colors" aria-label="关闭">
                         <X size={18} />
                     </button>
                 </div>

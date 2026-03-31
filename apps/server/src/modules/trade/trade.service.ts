@@ -30,20 +30,20 @@ export class TradeService {
   async createOrder(userId: string, dto: CreateOrderDto) {
     // Validate stock
     const stock = await this.stockRepo.findOne({ where: { id: dto.stockId, isActive: true } });
-    if (!stock) throw new BadRequestException('Stock not found or inactive');
+    if (!stock) throw new BadRequestException('股票不存在或已停用');
 
     // Get active season
     const season = await this.seasonRepo.findOne({ where: { isActive: true } });
-    if (!season) throw new BadRequestException('No active season');
+    if (!season) throw new BadRequestException('当前没有活动赛季');
 
     // Market order requires market to be open
     if (dto.type === 'market' && this.marketState.getStatus() !== MarketStatus.OPENING) {
-      throw new BadRequestException('Market is closed. Only limit orders allowed.');
+      throw new BadRequestException('当前休市中，仅支持限价单');
     }
 
     // Limit order requires price
     if (dto.type === 'limit' && !dto.price) {
-      throw new BadRequestException('Limit order requires a price');
+      throw new BadRequestException('限价单必须指定价格');
     }
 
     const currentPrice = Number(stock.currentPrice);
@@ -64,7 +64,7 @@ export class TradeService {
     if (dto.type === 'market') {
       // Check funds and deduct immediately
       const ok = await this.account.deductCash(userId, seasonId, totalWithCommission);
-      if (!ok) throw new BadRequestException('Insufficient funds');
+      if (!ok) throw new BadRequestException('可用资金不足');
 
       // Create filled order
       const order = this.orderRepo.create({
@@ -88,7 +88,7 @@ export class TradeService {
     } else {
       // Limit buy: freeze funds, create pending order
       const ok = await this.account.freezeCash(userId, seasonId, totalWithCommission);
-      if (!ok) throw new BadRequestException('Insufficient funds');
+      if (!ok) throw new BadRequestException('可用资金不足');
 
       const order = this.orderRepo.create({
         userId, stockId: stock.id, seasonId, type: 'limit', side: 'buy',
@@ -104,7 +104,7 @@ export class TradeService {
   private async executeSell(userId: string, seasonId: string, stock: StockEntity, dto: CreateOrderDto, price: number) {
     // Check position
     const hasPosition = await this.position.reducePosition(userId, stock.id, seasonId, dto.quantity);
-    if (!hasPosition) throw new BadRequestException('Insufficient shares');
+    if (!hasPosition) throw new BadRequestException('持仓股数不足');
 
     if (dto.type === 'market') {
       const totalRevenue = +(price * dto.quantity).toFixed(2);
@@ -147,7 +147,7 @@ export class TradeService {
 
   async cancelOrder(userId: string, orderId: string) {
     const order = await this.orderRepo.findOne({ where: { id: orderId, userId, status: 'pending' } });
-    if (!order) throw new BadRequestException('Order not found or not cancellable');
+    if (!order) throw new BadRequestException('订单不存在或无法取消');
 
     order.status = 'cancelled';
     await this.orderRepo.save(order);

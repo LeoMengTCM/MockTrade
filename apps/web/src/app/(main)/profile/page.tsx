@@ -79,7 +79,8 @@ export default function ProfilePage() {
         setCurrentSeason(currentSeasonRes.data || null);
         setSeasons(seasonsRes.data || []);
       })
-      .catch(() => {
+      .catch((e) => {
+        console.warn('[MockTrade]', e?.message || e);
         if (!active) return;
         setAccount(null);
         setHistory([]);

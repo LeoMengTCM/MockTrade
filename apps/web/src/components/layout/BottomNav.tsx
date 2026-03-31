@@ -22,7 +22,7 @@ export function BottomNav() {
         {TABS.map((tab) => {
           const isActive = pathname === tab.href || (tab.href !== '/' && pathname.startsWith(tab.href));
           return (
-            <Link key={tab.href} href={tab.href} className={cn('flex flex-col items-center gap-0.5 px-3 py-1', isActive ? 'text-accent-primary' : 'text-[var(--text-muted)]')}>
+            <Link key={tab.href} href={tab.href} aria-label={tab.label} aria-current={isActive ? 'page' : undefined} className={cn('flex flex-col items-center gap-0.5 px-3 py-1', isActive ? 'text-accent-primary' : 'text-[var(--text-muted)]')}>
               <tab.icon size={20} />
               <span className="text-[10px]">{tab.label}</span>
             </Link>

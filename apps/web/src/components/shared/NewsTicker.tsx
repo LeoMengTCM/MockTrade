@@ -25,7 +25,7 @@ export function NewsTicker() {
                     newsType: n.newsType || 'event',
                 })));
             })
-            .catch(() => { });
+            .catch((e: any) => console.warn('[MockTrade]', e?.message || e));
     }, []);
 
     if (news.length === 0) return null;

@@ -22,7 +22,7 @@ export default function NewsDetailPage() {
   const router = useRouter();
   const [news, setNews] = useState<NewsDetail | null>(null);
 
-  useEffect(() => { api.get(`/news/${id}`).then(r => setNews(r.data)).catch(() => {}); }, [id]);
+  useEffect(() => { api.get(`/news/${id}`).then(r => setNews(r.data)).catch((e) => console.warn('[MockTrade]', e?.message || e)); }, [id]);
 
   if (!news) return <div className="py-12 text-center text-[var(--text-muted)]">正在加载新闻...</div>;
 

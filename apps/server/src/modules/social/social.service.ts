@@ -17,9 +17,9 @@ export class SocialService {
 
   // === Follow ===
   async follow(followerId: string, followingId: string): Promise<void> {
-    if (followerId === followingId) throw new BadRequestException('Cannot follow yourself');
+    if (followerId === followingId) throw new BadRequestException('不能关注自己');
     const exists = await this.followRepo.findOne({ where: { followerId, followingId } });
-    if (exists) throw new BadRequestException('Already following');
+    if (exists) throw new BadRequestException('已经关注了该用户');
     await this.followRepo.save(this.followRepo.create({ followerId, followingId }));
   }
 

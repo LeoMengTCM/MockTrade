@@ -16,6 +16,7 @@ function getApiBaseUrl() {
 export const api = axios.create({
   baseURL: `${getApiBaseUrl()}/api`,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 30000,
 });
 
 api.interceptors.request.use((config) => {

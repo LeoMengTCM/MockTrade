@@ -22,6 +22,13 @@ export function getSocket(): Socket {
     socket = io(getWsUrl(), {
       transports: ['websocket'],
       autoConnect: false,
+      reconnection: true,
+      reconnectionAttempts: 20,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 30000,
+      auth: {
+        token: typeof window !== 'undefined' ? localStorage.getItem('token') : null,
+      },
     });
   }
   return socket;

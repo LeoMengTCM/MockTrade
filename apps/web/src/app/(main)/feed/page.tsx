@@ -24,7 +24,7 @@ export default function FeedPage() {
   const [expandedComments, setExpandedComments] = useState<Record<string, Comment[]>>({});
 
   useEffect(() => {
-    if (isHydrated && isAuthenticated) api.get('/social/feed').then(r => setPosts(r.data.items || [])).catch(() => {});
+    if (isHydrated && isAuthenticated) api.get('/social/feed').then(r => setPosts(r.data.items || [])).catch((e) => console.warn('[MockTrade]', e?.message || e));
   }, [isAuthenticated, isHydrated]);
 
   const submitPost = async () => {

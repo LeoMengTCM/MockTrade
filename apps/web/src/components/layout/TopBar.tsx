@@ -36,7 +36,7 @@ export function TopBar() {
             <div className="h-9 w-20 animate-pulse rounded-lg bg-[var(--bg-hover)]" />
           ) : isAuthenticated ? (
             <div className="relative">
-              <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-[var(--bg-hover)]">
+              <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-[var(--bg-hover)]" aria-label="用户菜单" aria-expanded={menuOpen}>
                 <UserAvatar
                   username={user?.username}
                   avatarUrl={user?.avatarUrl}
@@ -70,6 +70,7 @@ export function TopBar() {
             <button
               onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
               className="p-2 rounded-full border border-[var(--border-color)] bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all ml-1"
+              aria-label={resolvedTheme === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
             >
               {resolvedTheme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>

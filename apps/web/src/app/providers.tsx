@@ -7,7 +7,7 @@ import { syncPriceColorMode } from '@/lib/market-display';
 
 export function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
-    syncPriceColorMode().catch(() => { });
+    syncPriceColorMode().catch((e) => console.warn('[MockTrade]', e?.message || e));
   }, []);
 
   return (

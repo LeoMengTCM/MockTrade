@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthModule } from '../auth/auth.module';
 import { StockEntity } from '../../entities/stock.entity';
 import { StockTickEntity } from '../../entities/stock-tick.entity';
 import { MarketStateService } from './market-state.service';
@@ -17,7 +18,10 @@ import { TrendEngine } from './engine/trend-engine';
 import { MarketRegimeService } from './market-regime.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([StockEntity, StockTickEntity])],
+  imports: [
+    TypeOrmModule.forFeature([StockEntity, StockTickEntity]),
+    forwardRef(() => AuthModule),
+  ],
   controllers: [MarketController],
   providers: [
     MarketStateService,

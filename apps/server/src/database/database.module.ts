@@ -16,6 +16,11 @@ import { ConfigService } from '@nestjs/config';
         entities: [__dirname + '/../entities/*.entity{.ts,.js}'],
         synchronize: config.get('DB_SYNC', 'true') === 'true',
         logging: process.env.NODE_ENV !== 'production',
+        extra: {
+          max: 20,
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 5000,
+        },
       }),
     }),
   ],
