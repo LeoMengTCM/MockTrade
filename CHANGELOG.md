@@ -2,6 +2,46 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.1.2] - 2026-03-31
+
+### Security
+- JWT default secret now refuses to start in production (`NODE_ENV=production`), logs a warning in development
+- Enabled `@nestjs/throttler` rate limiting: global 100 req/min, auth endpoints 5 req/min
+- Added nginx security headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`
+- WebSocket CORS changed from wildcard `*` to `CORS_ORIGIN` env var
+- WebSocket `subscribe:user` channel now requires JWT authentication — clients can only subscribe to their own events
+
+### Backend Robustness
+- Added `cleanup()` / `resetAll()` to TrendEngine to prevent memory leaks from inactive stocks
+- KLineService `JSON.parse` wrapped in try-catch to handle corrupted Redis cache
+- AdminController `parseInt` now guards against NaN for pagination params
+- `GET /api/market/stocks/:id` returns HTTP 404 instead of 200 with error body when stock not found
+- Standardized all backend error messages to Chinese (trade, auth, social — 12 locations)
+- Database connection pool configured: max=20, idle timeout 30s, connection timeout 5s
+
+### Charts (Chinese Stock Platform Style)
+- Time-sharing chart refactored to use `BaselineSeries` with dual-color fill above/below previous close price
+- Added VWAP (volume-weighted average price) line to time-sharing chart — the signature element of Chinese stock platforms
+- Removed MA5/MA20 from time-sharing mode (only shown on candlestick view, matching domestic platform conventions)
+- Baseline changed from "first bar open" to actual `prevClosePrice` across both chart modes
+- Stats panel differentiated: time-sharing shows latest/change/change%/VWAP/amplitude; candlestick shows latest/change/change%/prev-close/amplitude
+- Legend adapts to chart mode: time-sharing shows VWAP + prev-close; candlestick shows MA5 + MA20 + prev-close
+
+### Frontend Polish
+- API client now has 30-second timeout
+- WebSocket reconnection with exponential backoff (up to 20 attempts, max 30s delay) + auth token in handshake
+- Replaced 10 silent `.catch(() => {})` calls with `console.warn` logging
+- Portfolio page now shows loading state while fetching data
+- Added ARIA accessibility attributes: `aria-expanded`, `aria-label`, `aria-current`, `role="dialog"`, `aria-modal`
+
+### Infrastructure
+- Default host ports changed to avoid common conflicts: nginx 9500, web 9510, server 9511, postgres 9532, redis 9579
+- All ports configurable via env vars: `NGINX_PORT`, `WEB_PORT`, `SERVER_PORT`, `POSTGRES_PORT`, `REDIS_PORT`
+- Added Docker health checks for server, web, and nginx containers
+- nginx now waits for `service_healthy` condition on web and server before starting
+- Added `worker_processes auto` and `worker_connections 2048` to nginx config
+- Added proxy timeouts (connect 30s, send 60s, read 60s) to nginx
+
 ## [0.1.1] - 2026-03-29
 
 ### Deployment

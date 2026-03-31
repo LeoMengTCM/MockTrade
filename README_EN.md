@@ -6,8 +6,10 @@ An AI-driven virtual stock trading simulator. Players trade 25 virtual stocks in
 
 - **AI-Powered News Engine** — Uses OpenAI / Claude to generate market news that dynamically impacts stock prices
 - **Real-Time Market Data** — WebSocket-driven price updates, K-line charts with `tick / 1m / 5m / 15m`
+- **Chinese Stock Platform Style Charts** — Time-sharing chart with dual-color baseline (prev close), VWAP line; candlestick with MA5/MA20
 - **Full Trading Loop** — Market orders, limit orders with auto-matching, commissions, and position management
 - **Seasonal Competition** — Independent leaderboards with total assets & return rate rankings
+- **Multi-Layer Market Engine** — Market regime (bull/bear/neutral) + sector rotation + stock personality profiles + trend memory
 - **Premium Design** — Apple-inspired minimal aesthetics, glassmorphism, light/dark themes, micro-animations
 
 ## 🛠 Tech Stack
@@ -64,6 +66,8 @@ pnpm dev:server   # Backend: http://localhost:3001
 pnpm dev:web      # Frontend: http://localhost:3000
 ```
 
+> Local development connects directly to `localhost:3001` (backend) / `localhost:3000` (frontend), without nginx.
+
 ### Docker Deployment
 
 ```bash
@@ -73,9 +77,19 @@ cp .env.production.example .env
 # Start all services
 docker compose up -d --build
 
-# Open
-open http://localhost
+# Open (default port 9500)
+open http://localhost:9500
 ```
+
+> Default port mapping (override via `.env`):
+>
+> | Service | Host Port | Env Var |
+> |---------|-----------|---------|
+> | nginx (entry) | 9500 | `NGINX_PORT` |
+> | web (Next.js) | 9510 | `WEB_PORT` |
+> | server (NestJS) | 9511 | `SERVER_PORT` |
+> | PostgreSQL | 9532 | `POSTGRES_PORT` |
+> | Redis | 9579 | `REDIS_PORT` |
 
 ### Docker Hub Pull-Based Deployment (Recommended for VPS)
 
@@ -106,7 +120,7 @@ Notes:
 - `docker-compose.dockerhub.yml` is image-only, so your VPS does not need Node.js, pnpm, or local builds.
 - By default it uses the stable `v0.1.1` image tags from `.env`. If you want rolling updates, change the `MOCKTRADE_*_IMAGE` values to `:latest`.
 - If frontend and API are served behind the same nginx domain, you can leave `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` empty. The frontend will automatically use same-origin `/api` and `/socket.io/`.
-- Public entrypoint is `http://YOUR_VPS_IP`, with `/api`, `/socket.io/`, and `/uploads/` routed by nginx.
+- Public entrypoint is `http://YOUR_VPS_IP:9500` (default, configurable via `NGINX_PORT`), with `/api`, `/socket.io/`, and `/uploads/` routed by nginx.
 - If you deploy from source, `docker-compose.yml` now also supports `POSTGRES_IMAGE / REDIS_IMAGE / NODE_IMAGE / NGINX_IMAGE / PNPM_REGISTRY`, so China-based servers can switch both Docker image sources and the pnpm registry.
 
 ### Domestic Mirror Sources for China-based VPS
@@ -176,6 +190,11 @@ If you have modified the code and wish to push new images to Docker Hub, this pr
 | `AI_API_KEY` | Optional | AI service API key (falls back to template news if absent) |
 | `AI_API_BASE` | Optional | AI service base URL |
 | `AI_MODEL` | Optional | AI model name |
+| `NGINX_PORT` | Optional | nginx host port, defaults to `9500` |
+| `WEB_PORT` | Optional | Next.js host port, defaults to `9510` |
+| `SERVER_PORT` | Optional | NestJS host port, defaults to `9511` |
+| `POSTGRES_PORT` | Optional | PostgreSQL host port, defaults to `9532` |
+| `REDIS_PORT` | Optional | Redis host port, defaults to `9579` |
 | `POSTGRES_IMAGE` | Optional | PostgreSQL image reference, can point to a domestic mirror |
 | `REDIS_IMAGE` | Optional | Redis image reference, can point to a domestic mirror |
 | `NODE_IMAGE` | Optional | Base Node image used for source builds, defaults to `node:20-alpine` |
@@ -189,7 +208,9 @@ If you have modified the code and wish to push new images to Docker Hub, this pr
 
 ### Market System
 - 25 virtual stocks with unique personas
-- Brownian motion + mean-reversion price engine
+- Market regime engine: auto-rotates bull / neutral / bear phases with sector rotation
+- Stock personality profiles: steady stocks trend slowly, high-beta stocks ride roller coasters
+- Brownian motion + mean-reversion + trend memory price engine
 - Event impact curves affecting prices
 - Automatic trading session rotation (open / close)
 

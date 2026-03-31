@@ -5,9 +5,11 @@
 ## ✨ 核心特色
 
 - **AI 驱动新闻引擎** — 使用 OpenAI / Claude 生成市场新闻，新闻发布后自动影响股价走势
-- **实时行情系统** — WebSocket 推送价格变动，K 线图支持 `逐跳 / 1分 / 5分 / 15分`
+- **实时行情系统** — WebSocket 推送价格变动，K 线图支持 `逐笔 / 1分 / 5分 / 15分`
+- **国内炒股平台风格图表** — 分时图双色面积（昨收线上下分色）+ 均价线，K 线带 MA5/MA20
 - **完整交易闭环** — 市价单即时成交、限价单自动撮合、手续费与持仓管理
 - **赛季制竞技** — 独立排行榜，支持资产与收益率双维度排名
+- **行情分层引擎** — 市场阶段（牛/熊/震荡）+ 板块轮动 + 个股性格画像 + 趋势记忆
 - **Apple 级视觉** — 极简设计、毛玻璃效果、深浅主题切换、微动画
 
 ## 🛠 技术栈
@@ -64,6 +66,8 @@ pnpm dev:server   # 后端：http://localhost:3001
 pnpm dev:web      # 前端：http://localhost:3000
 ```
 
+> 本地开发直连 `localhost:3001` (后端) / `localhost:3000` (前端)，不走 nginx。
+
 ### Docker 部署
 
 ```bash
@@ -73,9 +77,19 @@ cp .env.production.example .env
 # 启动全部服务
 docker compose up -d --build
 
-# 访问
-open http://localhost
+# 访问（默认端口 9500）
+open http://localhost:9500
 ```
+
+> 默认端口映射（可通过 `.env` 覆盖）：
+>
+> | 服务 | 宿主机端口 | 环境变量 |
+> |------|-----------|---------|
+> | nginx (入口) | 9500 | `NGINX_PORT` |
+> | web (Next.js) | 9510 | `WEB_PORT` |
+> | server (NestJS) | 9511 | `SERVER_PORT` |
+> | PostgreSQL | 9532 | `POSTGRES_PORT` |
+> | Redis | 9579 | `REDIS_PORT` |
 
 ### Docker Hub 拉取部署（推荐 VPS 使用）
 
@@ -106,7 +120,7 @@ docker compose -f docker-compose.dockerhub.yml exec server node dist/database/se
 - `docker-compose.dockerhub.yml` 只依赖镜像，不需要在 VPS 上安装 Node.js、pnpm 或本地构建源码。
 - 默认会拉取 `.env` 中写好的稳定镜像标签 `v0.1.1`；如果你想追踪最新版本，可以把 `MOCKTRADE_*_IMAGE` 改成 `:latest`。
 - 如果前端和 API 都走同一个域名下的 nginx 反代，`NEXT_PUBLIC_API_URL` 与 `NEXT_PUBLIC_WS_URL` 可以留空，前端会自动走同域 `/api` 和 `/socket.io/`。
-- 对外访问入口是 `http://YOUR_VPS_IP`，`/api`、`/socket.io/` 与 `/uploads/` 都由 nginx 统一转发。
+- 对外访问入口是 `http://YOUR_VPS_IP:9500`（默认端口，可通过 `NGINX_PORT` 修改），`/api`、`/socket.io/` 与 `/uploads/` 都由 nginx 统一转发。
 - 如果你是源码构建部署，`docker-compose.yml` 现在也支持 `POSTGRES_IMAGE / REDIS_IMAGE / NODE_IMAGE / NGINX_IMAGE / PNPM_REGISTRY`，国内服务器可以直接切到镜像代理或 npm 镜像。
 
 ### 国内镜像源（VPS 在国内时建议配置）
@@ -176,6 +190,11 @@ sudo systemctl restart docker
 | `AI_API_KEY` | 可选 | AI 服务 API Key（无则使用本地模板新闻） |
 | `AI_API_BASE` | 可选 | AI 服务接口地址 |
 | `AI_MODEL` | 可选 | AI 模型名称 |
+| `NGINX_PORT` | 可选 | nginx 宿主机端口，默认 `9500` |
+| `WEB_PORT` | 可选 | Next.js 宿主机端口，默认 `9510` |
+| `SERVER_PORT` | 可选 | NestJS 宿主机端口，默认 `9511` |
+| `POSTGRES_PORT` | 可选 | PostgreSQL 宿主机端口，默认 `9532` |
+| `REDIS_PORT` | 可选 | Redis 宿主机端口，默认 `9579` |
 | `POSTGRES_IMAGE` | 可选 | PostgreSQL 镜像地址，可替换为国内代理地址 |
 | `REDIS_IMAGE` | 可选 | Redis 镜像地址，可替换为国内代理地址 |
 | `NODE_IMAGE` | 可选 | 源码构建时使用的 Node 基础镜像，默认 `node:20-alpine` |
@@ -189,7 +208,9 @@ sudo systemctl restart docker
 
 ### 市场系统
 - 25 只虚拟股票，含人设与世界观
-- 布朗运动 + 均值回归价格引擎
+- 市场阶段引擎：自动在上行 / 震荡 / 下行间切换，板块轮动
+- 个股性格画像：稳健股走趋势，高弹性股过山车
+- 布朗运动 + 均值回归 + 趋势记忆价格引擎
 - 事件冲击曲线影响股价
 - 开盘 / 休市自动轮转
 

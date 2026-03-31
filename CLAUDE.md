@@ -532,15 +532,22 @@ achievement:unlocked # {code, name, rarity}
 
 ```bash
 # 本地开发
-docker compose -f docker-compose.dev.yml up -d  # 只启动 PG + Redis
-pnpm dev:server                                   # 后端
-pnpm dev:web                                      # 前端
+docker compose -f docker-compose.dev.yml up -d  # 只启动 PG(9532) + Redis(9579)
+pnpm dev:server                                   # 后端 :3001
+pnpm dev:web                                      # 前端 :3000
 
 # 生产部署
 cp env.production.example .env                    # 配置环境变量
 docker compose build                              # 构建镜像
 docker compose up -d                              # 启动 5 容器
 docker compose exec server node dist/database/seeds/run-seed.js  # 首次种子
+
+# 默认端口 (可通过 .env 覆盖)
+# NGINX_PORT=9500   (入口)
+# WEB_PORT=9510     (Next.js)
+# SERVER_PORT=9511  (NestJS)
+# POSTGRES_PORT=9532
+# REDIS_PORT=9579
 
 # 环境变量
 DATABASE_PASSWORD=xxx    # 数据库密码
@@ -550,8 +557,8 @@ AI_API_KEY=xxx          # AI API key (可选，无则用模板新闻)
 AI_REQUEST_TIMEOUT_MS=15000      # AI 单次请求超时，默认 15000ms
 AI_MAX_RETRIES=2                 # AI 失败后的额外重试次数，默认 2
 AI_RETRY_BASE_DELAY_MS=800       # AI 重试退避基准延迟，默认 800ms
-NEXT_PUBLIC_API_URL=http://YOUR_IP  # 前端API地址
-CORS_ORIGIN=http://YOUR_IP          # CORS
+NEXT_PUBLIC_API_URL=http://YOUR_IP:9500  # 前端API地址
+CORS_ORIGIN=http://YOUR_IP:9500          # CORS
 ```
 
 ---
@@ -560,10 +567,14 @@ CORS_ORIGIN=http://YOUR_IP          # CORS
 
 1. **[高] 行情参数后台可调** — 让管理员可配置 `bull / neutral / bear` 持续周期、强度和个股画像映射，便于调玩法
 2. **[高] 行情观测面板** — 后台补充当前阶段历史、切换日志、各板块表现和涨跌分布，便于调优
-3. **[中] 价格行为回归测试** — 补阶段切换、板块轮动、稳健股与高弹性股差异的集成测试，避免后续调参把行情打回“一起横盘”
+3. **[中] 价格行为回归测试** — 补阶段切换、板块轮动、稳健股与高弹性股差异的集成测试，避免后续调参把行情打回”一起横盘”
 4. **[中] AI 上游 provider 级告警** — 在现有 timeout / retry / circuit breaker 基础上补外部告警与更明确的降级策略
-5. **[低] 主题细节打磨** — 深浅主题的对比度、状态色和少量页面细节继续收口
-6. **[低] 响应式优化** — 移动端细节适配
+5. **[低] 响应式优化** — 移动端细节适配
+
+已在 v0.1.2 完成:
+- ~~主题细节打磨~~ — 安全加固、前端无障碍、错误处理、加载状态已补齐
+- ~~K 线图表~~ — 已重构为国内炒股平台风格（分时双色面积 + 均价线 + 昨收基线）
+- ~~端口冲突~~ — 默认端口已改为 9500 系列，可通过环境变量覆盖
 
 ---
 
