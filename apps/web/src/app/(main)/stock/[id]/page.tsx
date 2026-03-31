@@ -173,7 +173,12 @@ export default function StockDetailPage() {
         <span className="ml-2 mt-1 block text-xs text-[var(--text-muted)]">行业：{stock?.sector || liveStock?.sector}</span>
       </div>
 
-      <StockChart stockId={id} tradeMarkers={tradeMarkers} />
+      <StockChart
+        stockId={id}
+        prevClosePrice={liveStock?.prevClosePrice ?? stock?.prevClosePrice ?? 0}
+        openPrice={openPrice}
+        tradeMarkers={tradeMarkers}
+      />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-4 gap-3">
