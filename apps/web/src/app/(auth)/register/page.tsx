@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -10,7 +10,7 @@ import { api } from '@/lib/api';
 import { translateApiErrorMessage } from '@/lib/api-error';
 import { useAuthStore } from '@/stores/auth-store';
 import { ImageUploader } from '@/components/shared/ImageUploader';
-import { UserPlus, ArrowRight } from 'lucide-react';
+import { UserPlus, ArrowRight, ExternalLink } from 'lucide-react';
 
 const schema = z.object({
   email: z.string().email('请输入正确的邮箱地址'),
@@ -26,12 +26,17 @@ export default function RegisterPage() {
   const router = useRouter();
   const { setAuth } = useAuthStore();
   const [error, setError] = useState('');
+  const [linuxDoEnabled, setLinuxDoEnabled] = useState(false);
   const { register, handleSubmit, setValue, trigger, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       avatarUrl: ''
     }
   });
+
+  useEffect(() => {
+    api.get('/auth/linuxdo/status').then(r => setLinuxDoEnabled(r.data?.enabled === true)).catch(() => {});
+  }, []);
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -142,6 +147,23 @@ export default function RegisterPage() {
               {!isSubmitting && <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />}
             </button>
           </div>
+
+          {linuxDoEnabled && (
+            <>
+              <div className="relative flex items-center gap-3 pt-1">
+                <div className="h-px flex-1 bg-[var(--border-color)]" />
+                <span className="text-xs text-[var(--text-muted)]">或</span>
+                <div className="h-px flex-1 bg-[var(--border-color)]" />
+              </div>
+              <a
+                href="/api/auth/linuxdo"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)]/50 py-3.5 text-sm font-semibold text-[var(--text-primary)] transition-all hover:bg-[var(--bg-hover)] hover:border-[var(--text-muted)]"
+              >
+                <ExternalLink size={16} />
+                使用 Linux DO 登录
+              </a>
+            </>
+          )}
 
           <p className="pt-2 text-center text-sm font-medium text-[var(--text-muted)]">
             已经有账号？

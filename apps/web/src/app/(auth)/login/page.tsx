@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { api } from '@/lib/api';
 import { translateApiErrorMessage } from '@/lib/api-error';
 import { useAuthStore } from '@/stores/auth-store';
-import { LogIn, ArrowRight } from 'lucide-react';
+import { LogIn, ArrowRight, ExternalLink } from 'lucide-react';
 
 const schema = z.object({
   email: z.string().email('请输入正确的邮箱地址'),
@@ -21,7 +21,12 @@ export default function LoginPage() {
   const router = useRouter();
   const { setAuth } = useAuthStore();
   const [error, setError] = useState('');
+  const [linuxDoEnabled, setLinuxDoEnabled] = useState(false);
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  useEffect(() => {
+    api.get('/auth/linuxdo/status').then(r => setLinuxDoEnabled(r.data?.enabled === true)).catch(() => {});
+  }, []);
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -51,7 +56,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-secondary)]/80 backdrop-blur-xl p-8 shadow-soft">
           <h2 className="text-xl font-semibold mb-2">欢迎回来</h2>
           {error && <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-400">{error}</div>}
-          
+
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5 ml-1">邮箱</label>
@@ -71,6 +76,24 @@ export default function LoginPage() {
               {!isSubmitting && <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />}
             </button>
           </div>
+
+          {linuxDoEnabled && (
+            <>
+              <div className="relative flex items-center gap-3 pt-1">
+                <div className="h-px flex-1 bg-[var(--border-color)]" />
+                <span className="text-xs text-[var(--text-muted)]">或</span>
+                <div className="h-px flex-1 bg-[var(--border-color)]" />
+              </div>
+              <a
+                href="/api/auth/linuxdo"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)]/50 py-3.5 text-sm font-semibold text-[var(--text-primary)] transition-all hover:bg-[var(--bg-hover)] hover:border-[var(--text-muted)]"
+              >
+                <ExternalLink size={16} />
+                使用 Linux DO 登录
+              </a>
+            </>
+          )}
+
           <p className="pt-2 text-center text-sm font-medium text-[var(--text-muted)]">
             还没有账号？
             {' '}

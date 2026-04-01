@@ -49,6 +49,10 @@ export class AuthService {
     const user = await this.userRepo.findOne({ where: { email: dto.email } });
     if (!user) throw new UnauthorizedException('邮箱或密码错误');
 
+    if (!user.passwordHash) {
+      throw new UnauthorizedException('该账号通过第三方登录注册，请使用对应方式登录');
+    }
+
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) throw new UnauthorizedException('邮箱或密码错误');
 

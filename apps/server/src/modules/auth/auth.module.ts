@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { UserEntity } from '../../entities/user.entity';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { LinuxDoOAuthService } from './linuxdo-oauth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
 const INSECURE_DEFAULTS = ['default-secret', 'change-me-in-production'];
@@ -31,7 +32,7 @@ const INSECURE_DEFAULTS = ['default-secret', 'change-me-in-production'];
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService, JwtModule],
+  providers: [AuthService, LinuxDoOAuthService, JwtStrategy],
+  exports: [AuthService, LinuxDoOAuthService, JwtModule],
 })
 export class AuthModule {}

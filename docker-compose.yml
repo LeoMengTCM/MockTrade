@@ -55,6 +55,9 @@ services:
       AI_API_BASE: ${AI_API_BASE:-}
       AI_API_KEY: ${AI_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-gpt-4o}
+      LINUXDO_CLIENT_ID: ${LINUXDO_CLIENT_ID:-}
+      LINUXDO_CLIENT_SECRET: ${LINUXDO_CLIENT_SECRET:-}
+      LINUXDO_REDIRECT_URI: ${LINUXDO_REDIRECT_URI:-}
       PORT: 3001
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:9500}
     volumes:

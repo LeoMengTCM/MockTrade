@@ -7,11 +7,11 @@ export class UserEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
-  email: string;
+  @Column({ unique: true, nullable: true })
+  email: string | null;
 
-  @Column()
-  passwordHash: string;
+  @Column({ nullable: true })
+  passwordHash: string | null;
 
   @Column({ unique: true })
   username: string;
@@ -21,6 +21,12 @@ export class UserEntity {
 
   @Column({ type: 'enum', enum: ['user', 'admin'], default: 'user' })
   role: 'user' | 'admin';
+
+  @Column({ type: 'varchar', default: 'local' })
+  authProvider: 'local' | 'linuxdo';
+
+  @Column({ type: 'int', unique: true, nullable: true })
+  linuxdoId: number | null;
 
   @CreateDateColumn()
   createdAt: Date;
