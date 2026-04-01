@@ -42,3 +42,9 @@ docker/volumes/
 
 # Coverage
 coverage
+
+# Secrets / credentials
+ak.txt
+registered_accounts.txt
+*.secret
+*.key

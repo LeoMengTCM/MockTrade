@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { cn } from '@/lib/cn';
+import { getPriceDirection } from '@/lib/price-change';
 
 interface PriceDisplayProps {
   value: number;
@@ -12,8 +13,9 @@ interface PriceDisplayProps {
 }
 
 export function PriceDisplay({ value, change, changePercent, size = 'md', showSign = true }: PriceDisplayProps) {
-  const isUp = (change ?? 0) >= 0;
-  const isFlat = change === undefined || change === 0;
+  const direction = change === undefined ? 'flat' : getPriceDirection(change);
+  const isUp = direction === 'up';
+  const isFlat = direction === 'flat';
 
   const colorClass = isFlat ? 'text-[var(--text-muted)]' : isUp ? 'text-up' : 'text-down';
   const sizeClass = { sm: 'text-sm', md: 'text-base', lg: 'text-[1.35rem]', xl: 'text-3xl' }[size];

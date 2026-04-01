@@ -11,28 +11,27 @@ import { useMarketStore } from '@/stores/market-store';
 import { cn } from '@/lib/cn';
 import { formatVolume } from '@/lib/formatters';
 import { api } from '@/lib/api';
-
-function getChangePercent(currentPrice: number, openPrice: number) {
-  return openPrice > 0 ? (currentPrice - openPrice) / openPrice : 0;
-}
+import { getPriceMovement } from '@/lib/price-change';
 
 export default function HomePage() {
   const { stocks, marketRegime } = useMarketStore();
   const [sparklineData, setSparklineData] = useState<Record<string, number[]>>({});
-  const sortedByMove = [...stocks].sort((a, b) => getChangePercent(b.currentPrice, b.openPrice) - getChangePercent(a.currentPrice, a.openPrice));
+  const sortedByMove = [...stocks].sort(
+    (a, b) => getPriceMovement(b.currentPrice, b.openPrice).changePercent - getPriceMovement(a.currentPrice, a.openPrice).changePercent,
+  );
   const sortedByVolatility = [...stocks].sort(
-    (a, b) => Math.abs(getChangePercent(b.currentPrice, b.openPrice)) - Math.abs(getChangePercent(a.currentPrice, a.openPrice)),
+    (a, b) => Math.abs(getPriceMovement(b.currentPrice, b.openPrice).changePercent) - Math.abs(getPriceMovement(a.currentPrice, a.openPrice).changePercent),
   );
 
   const topGainer = sortedByMove[0];
   const topLoser = sortedByMove[sortedByMove.length - 1];
-  const risingCount = stocks.filter((stock) => getChangePercent(stock.currentPrice, stock.openPrice) > 0).length;
-  const fallingCount = stocks.filter((stock) => getChangePercent(stock.currentPrice, stock.openPrice) < 0).length;
+  const risingCount = stocks.filter((stock) => getPriceMovement(stock.currentPrice, stock.openPrice).direction === 'up').length;
+  const fallingCount = stocks.filter((stock) => getPriceMovement(stock.currentPrice, stock.openPrice).direction === 'down').length;
   const totalVolume = stocks.reduce((sum, stock) => sum + stock.volume, 0);
 
   useEffect(() => {
     if (stocks.length === 0) return;
-    // Fetch sparkline data for each stock (last 20 kline points)
+
     const fetchSparklines = async () => {
       const data: Record<string, number[]> = {};
       await Promise.all(
@@ -48,7 +47,13 @@ export default function HomePage() {
       );
       setSparklineData(data);
     };
-    fetchSparklines();
+    void fetchSparklines();
+
+    const timer = setInterval(() => {
+      void fetchSparklines();
+    }, 10000);
+
+    return () => clearInterval(timer);
   }, [stocks.length]);
 
   if (stocks.length === 0) {
@@ -112,8 +117,8 @@ export default function HomePage() {
           </div>
           <div className="flex flex-col justify-between flex-1 gap-1">
             {sortedByVolatility.slice(0, 4).map((stock, i) => {
-              const changePercent = getChangePercent(stock.currentPrice, stock.openPrice);
-              const isUp = changePercent >= 0;
+              const movement = getPriceMovement(stock.currentPrice, stock.openPrice);
+              const changePercent = movement.changePercent;
               return (
                 <Link
                   key={stock.id}
@@ -127,8 +132,15 @@ export default function HomePage() {
                       <div className="text-xs font-medium text-[var(--text-muted)] line-clamp-1 max-w-[120px]">{stock.name}</div>
                     </div>
                   </div>
-                  <div className={cn('text-[0.95rem] font-bold tabular-nums', isUp ? 'text-up' : 'text-down')}>
-                    {isUp ? '+' : ''}{(changePercent * 100).toFixed(2)}%
+                  <div className={cn(
+                    'text-[0.95rem] font-bold tabular-nums',
+                    movement.direction === 'flat'
+                      ? 'text-[var(--text-muted)]'
+                      : movement.direction === 'up'
+                        ? 'text-up'
+                        : 'text-down',
+                  )}>
+                    {movement.direction === 'up' ? '+' : ''}{(changePercent * 100).toFixed(2)}%
                   </div>
                 </Link>
               );
@@ -144,9 +156,7 @@ export default function HomePage() {
         </div>
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
           {stocks.map((stock) => {
-            const change = stock.currentPrice - stock.openPrice;
-            const changePercent = getChangePercent(stock.currentPrice, stock.openPrice);
-            const isUp = changePercent >= 0;
+            const movement = getPriceMovement(stock.currentPrice, stock.openPrice);
             const sparkline = sparklineData[stock.id];
             return (
               <Link
@@ -163,13 +173,18 @@ export default function HomePage() {
                     <div className="text-sm font-medium text-[var(--text-secondary)]">{stock.name}</div>
                   </div>
                   {sparkline && sparkline.length >= 2 && (
-                    <Sparkline prices={sparkline} width={80} height={28} />
+                    <Sparkline prices={sparkline} width={80} height={28} direction={movement.direction} />
                   )}
                 </div>
 
                 <div>
                   <div className="mb-4">
-                    <PriceDisplay value={stock.currentPrice} change={change} changePercent={changePercent} size="lg" />
+                    <PriceDisplay
+                      value={stock.currentPrice}
+                      change={movement.change}
+                      changePercent={movement.changePercent}
+                      size="lg"
+                    />
                   </div>
 
                   <div className="pt-4 border-t border-[var(--border-color)] flex flex-row items-center justify-between text-xs font-semibold text-[var(--text-muted)]">
@@ -204,8 +219,7 @@ function OverviewCard({ icon, label, value, suffix, accent }: { icon: React.Reac
 }
 
 function SpotlightCard({ href, title, stock, type }: { href: string; title: string; stock: { symbol: string, name: string, currentPrice: number, openPrice: number }; type: 'up' | 'down'; }) {
-  const changePercent = getChangePercent(stock.currentPrice, stock.openPrice);
-  const change = stock.currentPrice - stock.openPrice;
+  const movement = getPriceMovement(stock.currentPrice, stock.openPrice);
   return (
     <Link href={href} className={cn(
       "rounded-2xl p-6 transition-all duration-300 border flex flex-col justify-between",
@@ -221,7 +235,7 @@ function SpotlightCard({ href, title, stock, type }: { href: string; title: stri
       <div>
         <div className="text-2xl font-bold tracking-tight text-[var(--text-primary)] mb-1">{stock.symbol}</div>
         <div className="text-sm font-semibold text-[var(--text-secondary)] mb-6 truncate">{stock.name}</div>
-        <PriceDisplay value={stock.currentPrice} change={change} changePercent={changePercent} />
+        <PriceDisplay value={stock.currentPrice} change={movement.change} changePercent={movement.changePercent} />
       </div>
     </Link>
   );

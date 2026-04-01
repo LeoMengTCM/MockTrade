@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { randomUUID } from 'crypto';
 import { StockEntity } from '../../entities/stock.entity';
 import { RedisService } from '../redis/redis.service';
 import { MarketStatus, MARKET_OPEN_DURATION_MS, MARKET_CLOSE_DURATION_MS } from '@mocktrade/shared';
@@ -15,6 +16,8 @@ export class MarketStateService implements OnModuleInit, OnModuleDestroy {
   private statusChangeCallbacks: Array<(status: MarketStatus, countdown: number) => void> = [];
   private openDuration = MARKET_OPEN_DURATION_MS;
   private closeDuration = MARKET_CLOSE_DURATION_MS;
+  private currentMarketDayId: string | null = null;
+  private currentMarketDayStartedAt: Date | null = null;
 
   constructor(
     @InjectRepository(StockEntity)
@@ -38,6 +41,8 @@ export class MarketStateService implements OnModuleInit, OnModuleDestroy {
   getCycleCount() { return this.cycleCount; }
   getOpenDuration() { return this.openDuration; }
   getCloseDuration() { return this.closeDuration; }
+  getCurrentMarketDayId() { return this.currentMarketDayId; }
+  getCurrentMarketDayStartedAt() { return this.currentMarketDayStartedAt; }
   getCountdown() {
     if (!this.statusEndsAt) return 0;
     return Math.max(0, Math.ceil((this.statusEndsAt - Date.now()) / 1000));
@@ -50,6 +55,8 @@ export class MarketStateService implements OnModuleInit, OnModuleDestroy {
       countdown: this.getCountdown(),
       openDuration: this.openDuration,
       closeDuration: this.closeDuration,
+      marketDayId: this.currentMarketDayId,
+      marketDayStartedAt: this.currentMarketDayStartedAt?.toISOString() ?? null,
     };
   }
 
@@ -69,6 +76,8 @@ export class MarketStateService implements OnModuleInit, OnModuleDestroy {
   private openMarket() {
     this.status = MarketStatus.OPENING;
     this.cycleCount++;
+    this.currentMarketDayId = randomUUID();
+    this.currentMarketDayStartedAt = new Date();
     this.statusEndsAt = Date.now() + this.openDuration;
     this.logger.log(`Market OPEN - Cycle #${this.cycleCount}`);
     this.notify(MarketStatus.OPENING, this.getCountdown());

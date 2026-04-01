@@ -1,13 +1,16 @@
 'use client';
 
+import type { PriceDirection } from '@/lib/price-change';
+
 interface SparklineProps {
     prices: number[];
     width?: number;
     height?: number;
     className?: string;
+    direction?: PriceDirection;
 }
 
-export function Sparkline({ prices, width = 80, height = 24, className }: SparklineProps) {
+export function Sparkline({ prices, width = 80, height = 24, className, direction }: SparklineProps) {
     if (!prices || prices.length < 2) return null;
 
     const min = Math.min(...prices);
@@ -21,7 +24,11 @@ export function Sparkline({ prices, width = 80, height = 24, className }: Sparkl
         return `${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(' ');
 
-    const isUp = prices[prices.length - 1]! >= prices[0]!;
+    const stroke = direction === 'flat'
+        ? 'var(--text-muted)'
+        : direction === 'down'
+            ? 'var(--price-down)'
+            : 'var(--price-up)';
 
     return (
         <svg
@@ -34,7 +41,7 @@ export function Sparkline({ prices, width = 80, height = 24, className }: Sparkl
             <polyline
                 points={points}
                 fill="none"
-                stroke={isUp ? 'var(--price-up)' : 'var(--price-down)'}
+                stroke={stroke}
                 strokeWidth="1.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"

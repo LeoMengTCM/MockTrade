@@ -5,6 +5,7 @@ import type { Season, Tier } from '@mocktrade/shared';
 import { getTierFromReturnRate } from '@mocktrade/shared';
 import { api } from '@/lib/api';
 import { formatCurrency, formatDateRange, formatPercent } from '@/lib/formatters';
+import { getDirectionalTextClass, getPriceDirection } from '@/lib/price-change';
 import { TierBadge } from '@/components/shared/TierBadge';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { cn } from '@/lib/cn';
@@ -145,22 +146,25 @@ export default function LeaderboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {results.map(r => (
-                  <tr key={r.userId} className="border-b border-[var(--border-color)] last:border-0">
-                    <td className="px-4 py-3 font-medium">{r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : `#${r.rank}`}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <UserAvatar username={r.username} avatarUrl={r.avatarUrl} className="h-9 w-9 text-sm" />
-                        <div className="font-medium">{r.username}</div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-[var(--text-secondary)]">{formatCurrency(Number(r.totalAssets))}</td>
-                    <td className={cn('px-4 py-3 text-right font-mono font-medium', Number(r.returnRate) >= 0 ? 'text-up' : 'text-down')}>
-                      {formatPercent(Number(r.returnRate))}
-                    </td>
-                    <td className="px-4 py-3 text-right"><TierBadge tier={r.tier} size="sm" /></td>
-                  </tr>
-                ))}
+                {results.map((r) => {
+                  const direction = getPriceDirection(Number(r.returnRate));
+                  return (
+                    <tr key={r.userId} className="border-b border-[var(--border-color)] last:border-0">
+                      <td className="px-4 py-3 font-medium">{r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : `#${r.rank}`}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <UserAvatar username={r.username} avatarUrl={r.avatarUrl} className="h-9 w-9 text-sm" />
+                          <div className="font-medium">{r.username}</div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-[var(--text-secondary)]">{formatCurrency(Number(r.totalAssets))}</td>
+                      <td className={cn('px-4 py-3 text-right font-mono font-medium', getDirectionalTextClass(direction))}>
+                        {formatPercent(Number(r.returnRate))}
+                      </td>
+                      <td className="px-4 py-3 text-right"><TierBadge tier={r.tier} size="sm" /></td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -173,12 +177,13 @@ export default function LeaderboardPage() {
 function PodiumSlot({ rank, data }: { rank: number; data: LeaderboardRow }) {
   const heights = { 1: 'h-32', 2: 'h-24', 3: 'h-20' };
   const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
+  const direction = getPriceDirection(Number(data.returnRate));
   return (
     <div className="flex flex-col items-center">
       <div className="text-2xl mb-1">{medals[rank as 1 | 2 | 3]}</div>
       <UserAvatar username={data.username} avatarUrl={data.avatarUrl} className="mb-2 h-12 w-12 text-base" />
       <div className="text-sm font-medium">{data.username}</div>
-      <div className={cn('text-xs font-mono', Number(data.returnRate) >= 0 ? 'text-up' : 'text-down')}>{formatPercent(Number(data.returnRate))}</div>
+      <div className={cn('text-xs font-mono', getDirectionalTextClass(direction))}>{formatPercent(Number(data.returnRate))}</div>
       <TierBadge tier={data.tier} size="sm" />
       <div className={cn('w-20 rounded-t-lg bg-accent-primary/20 mt-2', heights[rank as 1 | 2 | 3])} />
     </div>

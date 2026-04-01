@@ -6,7 +6,7 @@ export function formatCurrency(value: number): string {
 }
 
 export function formatPercent(value: number): string {
-  const sign = value >= 0 ? '+' : '';
+  const sign = value > 0 ? '+' : '';
   return `${sign}${(value * 100).toFixed(2)}%`;
 }
 

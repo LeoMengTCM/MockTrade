@@ -53,6 +53,8 @@ export class ManualPriceInterventionService {
     const tickVolume = Math.max(100, Math.round(Math.abs(impactPercent) * 5000));
     const change = +(newPrice - currentPrice).toFixed(2);
     const changePercent = openPrice > 0 ? +((newPrice - openPrice) / openPrice).toFixed(6) : 0;
+    const marketDayId = this.marketState.getCurrentMarketDayId();
+    const marketDayStartedAt = this.marketState.getCurrentMarketDayStartedAt();
 
     stock.currentPrice = newPrice as any;
     stock.dailyHigh = Math.max(Number(stock.dailyHigh), newPrice) as any;
@@ -60,7 +62,13 @@ export class ManualPriceInterventionService {
     stock.volume = (Number(stock.volume) + tickVolume) as any;
 
     await this.stockRepo.save(stock);
-    await this.tickRepo.save(this.tickRepo.create({ stockId: stock.id, price: newPrice as any, volume: tickVolume }));
+    await this.tickRepo.save(this.tickRepo.create({
+      stockId: stock.id,
+      price: newPrice as any,
+      volume: tickVolume,
+      marketDayId,
+      marketDayStartedAt,
+    }));
     await this.redis.set(
       `price:${stock.id}`,
       JSON.stringify({ price: newPrice, change, changePercent }),
